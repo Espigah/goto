@@ -36,7 +36,7 @@ var iconNormal []byte
 var iconProcessing []byte
 
 // version of goto, printed at the start of the log when the app opens.
-const version = "0.3.3"
+const version = "0.3.4"
 
 // startPaused: show the tray without turning listening on (used by the login
 // autostart, so the mic does not go live by itself). Set by `--paused`.

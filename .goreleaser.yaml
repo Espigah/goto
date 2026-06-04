@@ -33,8 +33,13 @@ archives:
     formats: [tar.gz]
     files:
       - packaging/goto.desktop
+      - packaging/icons/goto.png
       - README.md
       - LICENSE
+  # raw binary, for anyone who just wants the executable (no package).
+  - id: rawbin
+    formats: [binary]
+    name_template: "goto_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 # .deb (apt) and .rpm (yum/dnf) from a single config, via nfpm.
 nfpms:

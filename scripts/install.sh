@@ -23,6 +23,10 @@ echo ">> binary   -> $BIN"
 install -Dm755 "$ROOT/goto" "$BIN"
 echo ">> icon     -> $ICON"
 install -Dm644 "$ROOT/packaging/icons/goto.png" "$ICON"
+# register the user hicolor theme so the icon cache can be built
+IDX="$HOME/.local/share/icons/hicolor/index.theme"
+[ -f "$IDX" ] || printf '[Icon Theme]\nName=hicolor\nComment=fallback\nDirectories=256x256/apps\n\n[256x256/apps]\nSize=256\nContext=Applications\nType=Fixed\n' > "$IDX"
+command -v xdg-icon-resource >/dev/null 2>&1 && xdg-icon-resource install --novendor --size 256 "$ROOT/packaging/icons/goto.png" goto >/dev/null 2>&1 || true
 
 # app-menu desktop entry (Exec without flag = auto-listen when you open it)
 install -d "$(dirname "$APP_DESKTOP")"
@@ -37,6 +41,7 @@ Icon=goto
 Terminal=false
 Categories=Utility;Accessibility;
 Keywords=voice;window;focus;
+StartupWMClass=goto
 EOF
 echo ">> menu     -> $APP_DESKTOP"
 
@@ -50,13 +55,14 @@ Comment=Voice window control
 Exec=$BIN --paused
 Icon=goto
 Terminal=false
+StartupWMClass=goto
 X-GNOME-Autostart-enabled=true
 X-GNOME-Autostart-Delay=3
 EOF
 echo ">> autostart-> $AUTOSTART (starts paused)"
 
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
-command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -f "$HOME/.local/share/icons/hicolor" >/dev/null 2>&1 || true
+command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" >/dev/null 2>&1 || true
 
 echo ""
 echo "OK. goto installed and will start on next login (in the tray, paused)."

@@ -3,12 +3,12 @@
 #   curl -fsSL https://espigah.github.io/goto/install.sh | bash
 #
 # Downloads the latest goto release, installs it to ~/.local/bin (no root),
-# sets up the system-tray app and login autostart (paused).
+# sets up the system-tray app and login autostart (paused), and launches it.
 set -euo pipefail
 
 REPO="Espigah/goto"
 BIN="$HOME/.local/bin/goto"
-ICON="$HOME/.local/share/icons/hicolor/256x256/apps/goto.png"
+ICONDIR="$HOME/.local/share/icons/hicolor"
 APP_DESKTOP="$HOME/.local/share/applications/goto.desktop"
 AUTOSTART="$HOME/.config/autostart/goto.desktop"
 
@@ -30,11 +30,20 @@ curl -fsSL "$base/goto_${ver}_linux_${ARCH}.tar.gz" -o "$tmp/goto.tgz"
 tar xzf "$tmp/goto.tgz" -C "$tmp"
 install -Dm755 "$tmp/goto" "$BIN"
 
-# app icon (for the desktop entry / menu)
-curl -fsSL "https://raw.githubusercontent.com/$REPO/main/packaging/icons/goto.png" -o "$tmp/goto.png" 2>/dev/null \
-  && install -Dm644 "$tmp/goto.png" "$ICON" || true
+# app icon: prefer the one bundled in the tarball, otherwise fetch from the repo.
+icon_src="$tmp/goto.png"
+[ -f "$icon_src" ] || curl -fsSL "https://raw.githubusercontent.com/$REPO/main/packaging/icons/goto.png" -o "$icon_src" 2>/dev/null || true
+if [ -f "$icon_src" ]; then
+  install -Dm644 "$icon_src" "$ICONDIR/256x256/apps/goto.png"
+  # register the user hicolor theme so the icon cache can be built
+  idx="$ICONDIR/index.theme"
+  [ -f "$idx" ] || printf '[Icon Theme]\nName=hicolor\nComment=fallback\nDirectories=256x256/apps\n\n[256x256/apps]\nSize=256\nContext=Applications\nType=Fixed\n' > "$idx"
+  command -v xdg-icon-resource >/dev/null 2>&1 && xdg-icon-resource install --novendor --size 256 "$icon_src" goto >/dev/null 2>&1 || true
+  command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -f -t "$ICONDIR" >/dev/null 2>&1 || true
+fi
 
-# app-menu entry (opens and auto-listens)
+# app-menu entry (opens and auto-listens). StartupWMClass helps the desktop
+# match the app to this icon.
 install -d "$(dirname "$APP_DESKTOP")"
 cat > "$APP_DESKTOP" <<EOF
 [Desktop Entry]
@@ -46,6 +55,7 @@ Exec=$BIN
 Icon=goto
 Terminal=false
 Categories=Utility;Accessibility;
+StartupWMClass=goto
 EOF
 
 # autostart on login (starts paused: the mic does not turn on at boot)
@@ -57,22 +67,24 @@ Name=goto
 Exec=$BIN --paused
 Icon=goto
 Terminal=false
+StartupWMClass=goto
 X-GNOME-Autostart-enabled=true
 X-GNOME-Autostart-Delay=3
 EOF
 
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
-command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -f "$HOME/.local/share/icons/hicolor" >/dev/null 2>&1 || true
 
 echo ""
 echo "goto v$ver installed to $BIN"
 case ":$PATH:" in *":$HOME/.local/bin:"*) : ;; *) echo "note: add ~/.local/bin to your PATH to run 'goto' directly." ;; esac
 
 # launch now if in a graphical session
-if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && ! pgrep -x goto >/dev/null 2>&1; then
-  ( setsid "$BIN" >/dev/null 2>&1 < /dev/null & ) || ( "$BIN" >/dev/null 2>&1 & )
-  echo "goto is starting in your system tray, and will start on next login too."
+if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+  pkill -x goto >/dev/null 2>&1 || true
+  ( setsid "$BIN" >/dev/null 2>&1 < /dev/null & ) || ( nohup "$BIN" >/dev/null 2>&1 & )
+  echo "goto started in your system tray (it also starts on next login)."
 else
   echo "run it with: goto"
 fi
+echo "tip: if the menu icon still looks generic, log out and back in (the desktop caches app icons)."
 echo "tip: for automatic updates, use the apt/dnf repo (see the README)."
