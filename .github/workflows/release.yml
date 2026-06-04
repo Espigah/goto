@@ -10,7 +10,11 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    # Build on the OLDEST supported runner so the binary links against an older
+    # glibc and runs on more systems. ubuntu-22.04 ships glibc 2.35, which covers
+    # Ubuntu 22.04 LTS+, Debian 12+, etc. ubuntu-latest (24.04) needs glibc 2.39
+    # and fails on anything older with "GLIBC_2.38 not found".
+    runs-on: ubuntu-22.04
     env:
       CGO_ENABLED: "1"
       # ABSOLUTE: CGO compiles in the package dir, so a relative path

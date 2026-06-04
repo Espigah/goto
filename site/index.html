@@ -42,6 +42,9 @@
   .flow{color:var(--muted);font-family:ui-monospace,monospace;font-size:14px;background:var(--code);border:1px solid var(--line);border-radius:10px;padding:16px;overflow:auto}
   .note{background:rgba(139,123,255,.08);border:1px solid var(--line);border-left:3px solid var(--accent2);border-radius:8px;padding:12px 16px;color:var(--muted);font-size:14px}
   footer{padding:40px 0 60px;text-align:center;color:var(--muted);font-size:14px;border-top:1px solid var(--line)}
+  .verbadge{position:fixed;right:14px;bottom:12px;z-index:20;opacity:.9;transition:opacity .15s}
+  .verbadge:hover{opacity:1}
+  .verbadge img{height:22px;display:block;border-radius:4px}
 </style>
 </head>
 <body>
@@ -125,5 +128,8 @@ tar xzf goto_&lt;version&gt;_linux_amd64.tar.gz &amp;&amp; ./goto</code></pre>
   </footer>
 
 </div>
+<a class="verbadge" href="https://github.com/Espigah/goto/releases/latest" title="latest release">
+  <img src="https://img.shields.io/github/v/release/Espigah/goto?display_name=tag&label=goto&color=6e9bff&labelColor=161b22" alt="latest goto version" loading="lazy">
+</a>
 </body>
 </html>

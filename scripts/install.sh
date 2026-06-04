@@ -67,10 +67,23 @@ command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -f -t 
 echo ""
 echo "OK. goto installed and will start on next login (in the tray, paused)."
 
-# Launch now so it shows up in the tray immediately (detached from the shell).
-if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && ! pgrep -x goto >/dev/null 2>&1; then
-  ( setsid "$BIN" >/dev/null 2>&1 < /dev/null & ) || ( "$BIN" >/dev/null 2>&1 & )
-  echo ">> goto launched (check your system tray)."
+# Launch now so it shows up in the tray immediately (detached via setsid so it
+# survives this shell exiting).
+if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+  pkill -x goto >/dev/null 2>&1 || true
+  sleep 0.3
+  if command -v setsid >/dev/null 2>&1; then
+    setsid "$BIN" >/dev/null 2>&1 < /dev/null &
+  else
+    nohup "$BIN" >/dev/null 2>&1 < /dev/null &
+  fi
+  disown >/dev/null 2>&1 || true
+  sleep 1.5
+  if pgrep -x goto >/dev/null 2>&1; then
+    echo ">> goto is running (check your system tray)."
+  else
+    echo ">> goto installed but did not stay open. Start it with: $BIN"
+  fi
 else
   echo "Run now: $BIN"
 fi

@@ -78,13 +78,27 @@ echo ""
 echo "goto v$ver installed to $BIN"
 case ":$PATH:" in *":$HOME/.local/bin:"*) : ;; *) echo "note: add ~/.local/bin to your PATH to run 'goto' directly." ;; esac
 
-# launch now if in a graphical session
+# launch now if in a graphical session. setsid detaches it into its own session
+# so it survives this shell exiting (important when run via `curl ... | bash`).
 if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
   pkill -x goto >/dev/null 2>&1 || true
-  ( setsid "$BIN" >/dev/null 2>&1 < /dev/null & ) || ( nohup "$BIN" >/dev/null 2>&1 & )
-  echo "goto started in your system tray (it also starts on next login)."
+  sleep 0.3
+  if command -v setsid >/dev/null 2>&1; then
+    setsid "$BIN" >/dev/null 2>&1 < /dev/null &
+  else
+    nohup "$BIN" >/dev/null 2>&1 < /dev/null &
+  fi
+  disown >/dev/null 2>&1 || true
+  # verify it actually stayed up before claiming success
+  sleep 1.5
+  if pgrep -x goto >/dev/null 2>&1; then
+    echo "goto is running now (look for it in the system tray); it also starts on next login."
+  else
+    echo "goto was installed but did not stay open. Start it yourself with: goto"
+  fi
 else
-  echo "run it with: goto"
+  echo "no graphical session detected. Start it with: goto"
 fi
 echo "tip: if the menu icon still looks generic, log out and back in (the desktop caches app icons)."
+echo "tip: on GNOME, the tray icon needs the 'AppIndicator and KStatusNotifier Support' extension."
 echo "tip: for automatic updates, use the apt/dnf repo (see the README)."
