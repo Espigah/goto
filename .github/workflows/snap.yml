@@ -1,0 +1,30 @@
+name: Snap
+
+# Builds the snap and pushes it to the Snap Store on every release tag.
+# Publishes to the "edge" channel first so a bad build never reaches stable
+# users; promote with `snapcraft release goto-window <rev> stable` once verified.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}   # allow manual builds without cutting a tag
+
+jobs:
+  snap:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build snap
+        uses: snapcore/action-build@v1
+        id: build
+
+      - name: Publish to the Snap Store (edge)
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: ${{ steps.build.outputs.snap }}
+          release: edge

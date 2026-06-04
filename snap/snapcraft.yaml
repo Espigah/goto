@@ -1,0 +1,70 @@
+name: goto-window
+title: goto
+base: core22
+adopt-info: goto
+summary: Focus windows, tabs and conversations by voice, offline.
+description: |
+  Lost a window in a sea of windows? Hunting for it with the mouse and Alt+Tab
+  is slow and annoying. goto brings it to the front, just say where you want
+  to go:
+
+    "goto vscode myproject"  -> focuses the VS Code project window
+    "goto slack john doe"    -> opens that direct message
+    "goto chrome github"     -> jumps to the right browser tab
+
+  Speech recognition runs entirely on your machine, nothing is sent to the
+  cloud, no account and no API key. goto lives in the system tray.
+
+  Note: goto needs an X11 session to control other windows. After install,
+  allow microphone access once with:
+
+    snap connect goto-window:audio-record
+
+grade: stable
+confinement: strict
+
+# goto is X11-only; on amd64 for now (CGO + whisper.cpp has no easy cross-build).
+architectures:
+  - build-on: [amd64]
+
+parts:
+  goto:
+    plugin: nil
+    source: .
+    build-snaps:
+      - go/1.25/stable
+    build-packages:
+      - cmake
+      - g++
+      - make
+      - pkg-config
+    stage-packages:
+      # OpenMP runtime (whisper) + the audio client libs miniaudio dlopen's at
+      # runtime. Under strict confinement these must live inside the snap.
+      - libgomp1
+      - libpulse0
+      - libasound2
+    override-build: |
+      set -e
+      # version in lockstep with the binary's own const
+      craftctl set version="$(grep -oP 'version = "\K[0-9][^"]*' main.go)"
+      # build the static whisper lib (same as `make lib`)
+      make lib
+      export CGO_ENABLED=1
+      export C_INCLUDE_PATH="$CRAFT_PART_BUILD/third_party/whisper.cpp/include:$CRAFT_PART_BUILD/third_party/whisper.cpp/ggml/include"
+      export LIBRARY_PATH="$CRAFT_PART_BUILD/third_party/whisper.cpp/build_go/src:$CRAFT_PART_BUILD/third_party/whisper.cpp/build_go/ggml/src"
+      go build -tags whisper -ldflags '-s -w' -o "$CRAFT_PART_INSTALL/bin/goto" .
+
+apps:
+  goto:
+    command: bin/goto
+    plugs:
+      - x11            # window list/focus + XTEST keystroke injection + global hotkey
+      - opengl
+      - audio-record   # microphone (connect manually: snap connect goto-window:audio-record)
+      - audio-playback
+      - network        # one-time voice-pack download on first run
+      - home
+      - unity7         # AppIndicator / system-tray icon
+      - desktop
+      - desktop-legacy

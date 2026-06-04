@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=goto
+GenericName=Voice window control
+Comment=Focus windows, tabs and conversations by voice
+Exec=goto-window.goto
+Icon=${SNAP}/meta/gui/goto-window.png
+Terminal=false
+Categories=Utility;Accessibility;
+Keywords=voice;window;focus;
+StartupWMClass=goto
