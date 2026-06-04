@@ -41,3 +41,13 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # AppImage is built after GoReleaser (it is not a goreleaser format) from
+      # the same binary in dist/, then attached to the release.
+      - name: Build AppImage
+        run: bash scripts/build-appimage.sh "${{ github.ref_name }}"
+
+      - name: Attach AppImage to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" goto_*_x86_64.AppImage --clobber

@@ -2,6 +2,7 @@
 /goto
 /build/
 *.AppImage
+/AppDir/
 
 # compiled whisper.cpp lib
 /third_party/whisper.cpp/build_go/

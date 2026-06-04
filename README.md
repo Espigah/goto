@@ -104,6 +104,16 @@ sudo dnf install ./goto_<version>_linux_amd64.rpm
 tar xzf goto_<version>_linux_amd64.tar.gz && ./goto
 ```
 
+### AppImage (single portable file, no install)
+
+One self-contained file that runs on most distros, it bundles the C/C++
+runtime so you don't hit missing-library errors:
+
+```bash
+chmod +x goto_<version>_x86_64.AppImage
+./goto_<version>_x86_64.AppImage
+```
+
 The Whisper model (~466MB) is downloaded on first use to
 `~/.local/share/goto/models/`. goto runs in the system tray.
 
