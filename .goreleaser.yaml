@@ -1,0 +1,63 @@
+# GoReleaser, builds goto's distribution artifacts.
+#
+# NOTE: the build is CGO (malgo + whisper.cpp), so there is no easy
+# cross-compile. Run the release on a Linux host matching the target arch
+# (or one runner per arch). The static lib (libwhisper) is built by the
+# `make lib` hook and linked into the binary; the final package only needs
+# libstdc++/libgomp at runtime.
+version: 2
+project_name: goto
+
+before:
+  hooks:
+    - make lib
+
+builds:
+  - id: goto
+    main: .
+    binary: goto
+    env:
+      - CGO_ENABLED=1
+      # C_INCLUDE_PATH/LIBRARY_PATH come from the environment (ABSOLUTE, set
+      # in the workflow). CGO compiles in the package dir, so a relative path
+      # does not resolve here.
+    goos: [linux]
+    goarch: [amd64] # arm64: run the release on an arm64 runner
+    flags:
+      - -tags=whisper
+    ldflags:
+      - -s -w
+
+archives:
+  - id: goto
+    formats: [tar.gz]
+    files:
+      - packaging/goto.desktop
+      - README.md
+      - LICENSE
+
+# .deb (apt) and .rpm (yum/dnf) from a single config, via nfpm.
+nfpms:
+  - id: goto
+    package_name: goto
+    vendor: Espigah
+    homepage: https://github.com/Espigah/goto
+    maintainer: Espigah <espigah@users.noreply.github.com>
+    description: Voice control for windows, offline-first.
+    license: MIT
+    formats: [deb, rpm]
+    # libstdc++6/libgomp1 are the Debian names; on rpm use libstdc++/libgomp
+    # via overrides if publishing both (see the nfpm docs).
+    dependencies:
+      - libstdc++6
+    recommends:
+      - libgomp1
+    contents:
+      - src: packaging/goto.desktop
+        dst: /usr/share/applications/goto.desktop
+      - src: packaging/icons/goto.png
+        dst: /usr/share/icons/hicolor/256x256/apps/goto.png
+
+release:
+  draft: false
+  prerelease: auto

@@ -1,0 +1,13 @@
+# binaries
+/goto
+/build/
+*.AppImage
+
+# compiled whisper.cpp lib
+/third_party/whisper.cpp/build_go/
+
+# downloaded models (do not version)
+*.bin
+
+# goreleaser artifacts
+/dist/

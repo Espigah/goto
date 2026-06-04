@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=goto
+GenericName=Voice window control
+Comment=Focus windows by voice: "goto vscode myproject"
+Exec=goto
+Icon=goto
+Terminal=false
+Categories=Utility;Accessibility;
+Keywords=voice;window;focus;

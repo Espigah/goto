@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>goto, voice control for windows on Linux</title>
+<meta name="description" content="goto: focus windows, tabs and conversations by voice on Linux. Private and offline, your voice never leaves your computer.">
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --line:#222a35; --fg:#e6edf3;
+    --muted:#9aa7b4; --accent:#6e9bff; --accent2:#8b7bff; --code:#0b0f15;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--fg);line-height:1.6}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:920px;margin:0 auto;padding:0 20px}
+  header{padding:64px 0 40px;text-align:center}
+  header img{width:300px;max-width:80%;height:auto;filter:drop-shadow(0 8px 40px rgba(110,155,255,.25))}
+  h1{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .tag{font-size:20px;color:var(--muted);margin:0 auto;max-width:620px}
+  .badges{margin-top:14px;font-size:13px;color:var(--muted)}
+  .badges span{border:1px solid var(--line);border-radius:999px;padding:3px 10px;margin:0 4px;white-space:nowrap}
+  .cta{margin:28px 0 8px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-block;padding:12px 20px;border-radius:10px;font-weight:600;border:1px solid var(--line)}
+  .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0b0f15;border:none}
+  .btn.ghost{background:var(--panel);color:var(--fg)}
+  .demo{background:var(--code);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:28px auto;max-width:760px;text-align:left;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;overflow-x:auto}
+  .demo div{white-space:nowrap}
+  .demo .you{color:var(--accent)}
+  .demo .arrow{color:var(--muted)}
+  section{padding:34px 0;border-top:1px solid var(--line)}
+  h2{font-size:26px;margin:0 0 18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .card h3{margin:0 0 6px;font-size:17px}
+  .card p{margin:0;color:var(--muted);font-size:15px}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:16px;overflow:auto;font-size:14px}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .flow{color:var(--muted);font-family:ui-monospace,monospace;font-size:14px;background:var(--code);border:1px solid var(--line);border-radius:10px;padding:16px;overflow:auto}
+  .note{background:rgba(139,123,255,.08);border:1px solid var(--line);border-left:3px solid var(--accent2);border-radius:8px;padding:12px 16px;color:var(--muted);font-size:14px}
+  footer{padding:40px 0 60px;text-align:center;color:var(--muted);font-size:14px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <img src="logo.png" alt="goto">
+    <h1>goto</h1>
+    <p class="tag">Lost a window in a sea of windows? Hunting for it with the mouse and Alt+Tab is slow and annoying. <b>goto</b> brings it to the front, just say where you want to go. On Linux, fully offline.</p>
+    <div class="badges">
+      <span>🔒 100% private</span>
+      <span>🔌 works offline</span>
+      <span>🗣️ hands-free</span>
+      <span>🤖 works with Claude Code</span>
+    </div>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/Espigah/goto/releases/latest">⬇️ Download (.deb / .rpm / .tar.gz)</a>
+      <a class="btn ghost" href="https://github.com/Espigah/goto">View on GitHub</a>
+    </div>
+    <div class="demo">
+      <div><span class="you">you:</span> "goto vscode myproject" <span class="arrow">→ focuses the VS Code project</span></div>
+      <div><span class="you">you:</span> "goto slack john doe" <span class="arrow">→ opens the DM</span></div>
+      <div><span class="you">you:</span> "goto chrome github" <span class="arrow">→ jumps to the right tab</span></div>
+    </div>
+  </header>
+
+  <section>
+    <h2>How it works</h2>
+    <div class="grid">
+      <div class="card"><h3>1. Say it</h3><p>Hold a key or just speak, the way you'd tell a person: "goto slack john doe".</p></div>
+      <div class="card"><h3>2. goto finds it</h3><p>It figures out which window, tab or conversation you mean, across everything you have open.</p></div>
+      <div class="card"><h3>3. You're there</h3><p>The right window snaps to the front. No mouse, no endless Alt+Tab.</p></div>
+    </div>
+    <p style="color:var(--muted)">Your voice never leaves your computer. Everything runs locally, nothing is sent to the cloud.</p>
+  </section>
+
+  <section>
+    <h2>What you can do</h2>
+    <div class="grid">
+      <div class="card"><h3>Windows &amp; apps</h3><p>"goto terminal logs", "goto slack", "goto browser" (focuses the only open browser).</p></div>
+      <div class="card"><h3>Chrome tabs</h3><p>"goto chrome github" uses Chrome's native tab search to jump straight to the right tab.</p></div>
+      <div class="card"><h3>Slack DMs</h3><p>"goto slack john doe" opens the conversation via Jump to (Ctrl+K).</p></div>
+      <div class="card"><h3>VS Code files</h3><p>"goto vscode app config" opens the file via Quick Open (Ctrl+P).</p></div>
+      <div class="card"><h3>Accent-tolerant</h3><p>"goto", "go to", "good to", "gotchu"... recognition forgives the variations.</p></div>
+      <div class="card"><h3>Extensible</h3><p>Each program is an isolated adapter. Adding a new app is one file, no core changes.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Install</h2>
+    <pre><code># Debian / Ubuntu
+sudo apt install ./goto_&lt;version&gt;_linux_amd64.deb
+
+# Fedora / RHEL
+sudo dnf install ./goto_&lt;version&gt;_linux_amd64.rpm
+
+# Portable (tar.gz)
+tar xzf goto_&lt;version&gt;_linux_amd64.tar.gz &amp;&amp; ./goto</code></pre>
+    <p style="color:var(--muted)">A one-time voice pack downloads on first run. goto lives in the system tray and can start with your login.</p>
+  </section>
+
+  <section>
+    <h2>Becomes an arm of Claude Code</h2>
+    <p style="color:var(--muted)">goto exposes desktop actions as MCP tools. Connect it and Claude Code can focus windows, switch tabs and open conversations for you:</p>
+    <pre><code>claude mcp add --transport stdio goto -- /path/to/goto mcp</code></pre>
+    <div class="note">Beta. The hands work; voice recognition sometimes misreads proper names. Feedback is very welcome in the issues.</div>
+  </section>
+
+  <section style="text-align:center">
+    <h2>Stop hunting. Just say where you want to go.</h2>
+    <p style="color:var(--muted);max-width:560px;margin:0 auto 26px">Your windows, one sentence away. Free, open source and private, for Linux.</p>
+    <a class="btn primary" href="https://github.com/Espigah/goto/releases/latest">⬇️ Get goto</a>
+  </section>
+
+  <footer>
+    <p>Free and open source under the MIT license. Made for people drowning in windows.</p>
+    <p><a href="https://github.com/Espigah/goto">github.com/Espigah/goto</a></p>
+  </footer>
+
+</div>
+</body>
+</html>

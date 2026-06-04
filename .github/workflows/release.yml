@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: "1"
+      # ABSOLUTE: CGO compiles in the package dir, so a relative path
+      # cannot find whisper.h / libwhisper.a.
+      C_INCLUDE_PATH: ${{ github.workspace }}/third_party/whisper.cpp/include:${{ github.workspace }}/third_party/whisper.cpp/ggml/include
+      LIBRARY_PATH: ${{ github.workspace }}/third_party/whisper.cpp/build_go/src:${{ github.workspace }}/third_party/whisper.cpp/build_go/ggml/src
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build deps (cmake/g++)
+        run: sudo apt-get update && sudo apt-get install -y cmake build-essential
+
+      - name: GoReleaser (build + deb/rpm/tar.gz + release)
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

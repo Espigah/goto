@@ -1,0 +1,33 @@
+name: goto
+base: core22
+version: '0.1.0'
+summary: Voice control for windows, offline-first
+description: |
+  Focus windows by voice. Say "goto vscode myproject" and the right window
+  comes to the front. Transcription runs 100% locally (Whisper), no cloud.
+
+grade: stable
+# NOTE: goto focuses OTHER apps' windows (EWMH), registers a global hotkey
+# and records audio. That clashes with snap's strict confinement. The
+# realistic path is `classic` (requires manual review on the Snap Store). To
+# try strict, map the plugs: x11, wayland, audio-record, desktop.
+confinement: classic
+
+parts:
+  goto:
+    plugin: nil
+    source: .
+    build-snaps:
+      - go/1.23/stable
+    build-packages:
+      - gcc
+      - g++
+      - cmake
+    override-build: |
+      make lib
+      make build-voice
+      install -D -m0755 goto $CRAFT_PART_INSTALL/bin/goto
+
+apps:
+  goto:
+    command: bin/goto
