@@ -63,6 +63,15 @@ Downloads the latest goto, installs it to `~/.local/bin`, and sets up the
 system tray + login autostart. To update later, re-run the same line (or use
 the apt/dnf repo below for automatic updates).
 
+To uninstall (removes the binary, menu/autostart entries, icon, and the
+downloaded voice model + config):
+
+```bash
+curl -fsSL https://espigah.github.io/goto/uninstall.sh | bash
+```
+
+If you installed from source, `make uninstall` does the same.
+
 ### Via apt/dnf repository (recommended, auto-updates)
 
 Add the repo once; then `apt upgrade` / `dnf upgrade` (or the system's
