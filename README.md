@@ -53,6 +53,16 @@ goto browser              # focus the only open browser (does nothing if 2+)
 
 ## Install
 
+### Quick install (one line)
+
+```bash
+curl -fsSL https://espigah.github.io/goto/install.sh | bash
+```
+
+Downloads the latest goto, installs it to `~/.local/bin`, and sets up the
+system tray + login autostart. To update later, re-run the same line (or use
+the apt/dnf repo below for automatic updates).
+
 ### Via apt/dnf repository (recommended, auto-updates)
 
 Add the repo once; then `apt upgrade` / `dnf upgrade` (or the system's
