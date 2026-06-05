@@ -43,6 +43,23 @@ jobs:
           export CMAKE_BUILD_PARALLEL_LEVEL="$(nproc)"
           make lib
 
+      - name: Normalize static lib names for MinGW
+        # On Windows, cmake names the static libs without the "lib" prefix
+        # (ggml.a, ggml-base.a, ...), but cgo links with -lggml, which needs
+        # libggml.a. Copy each to a lib-prefixed name. Windows-only; the Linux
+        # build already produces libggml.a etc.
+        run: |
+          for d in third_party/whisper.cpp/build_go/src third_party/whisper.cpp/build_go/ggml/src; do
+            for f in "$d"/*.a; do
+              [ -e "$f" ] || continue
+              base=$(basename "$f")
+              case "$base" in
+                lib*) ;;
+                *) cp -f "$f" "$d/lib$base" ;;
+              esac
+            done
+          done
+
       - name: Build goto.exe
         run: |
           export CGO_ENABLED=1
