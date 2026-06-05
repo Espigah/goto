@@ -1,0 +1,44 @@
+name: Auto-tag release
+
+# Turns "push to main" into a full release: when the version in main.go is new,
+# this pushes a v<version> tag, which fans out to release.yml (deb/rpm/tar.gz +
+# AppImage), snap.yml, windows.yml and the pages repo rebuild. If the version
+# hasn't changed, it does nothing (you can't release the same version twice).
+#
+# The tag is pushed with a PAT (secret RELEASE_PAT) on purpose: a tag pushed
+# with the default GITHUB_TOKEN would NOT trigger the other workflows.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  autotag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Tag the release when the version changed
+        env:
+          RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+        run: |
+          ver="$(grep -oP 'version = "\K[0-9][^"]*' main.go)"
+          [ -n "$ver" ] || { echo "could not read version from main.go"; exit 1; }
+          tag="v$ver"
+          if git ls-remote --tags origin "refs/tags/$tag" | grep -q "refs/tags/$tag"; then
+            echo "tag $tag already exists; nothing to release."
+            exit 0
+          fi
+          if [ -z "$RELEASE_PAT" ]; then
+            echo "::warning::version $ver is new but RELEASE_PAT is not set; cannot push the release tag."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Release $tag"
+          git push "https://x-access-token:${RELEASE_PAT}@github.com/${GITHUB_REPOSITORY}.git" "$tag"
+          echo ">> pushed $tag -> release / snap / windows / pages will run"
