@@ -13,7 +13,8 @@
     <bugTrackerUrl>https://github.com/Espigah/goto/issues</bugTrackerUrl>
     <licenseUrl>https://github.com/Espigah/goto/blob/main/LICENSE</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <iconUrl>https://raw.githubusercontent.com/Espigah/goto/main/packaging/icons/goto.png</iconUrl>
+    <!-- Chocolatey's gallery doesn't render raw.githubusercontent icons; use a CDN (jsDelivr). -->
+    <iconUrl>https://cdn.jsdelivr.net/gh/Espigah/goto@main/packaging/icons/goto.png</iconUrl>
     <tags>goto voice window-focus productivity tray accessibility offline</tags>
     <summary>Focus windows, tabs and conversations by voice, offline.</summary>
     <description>
