@@ -82,9 +82,14 @@ jobs:
           # runtime (-fopenmp pulls in libgomp); without it the link fails with
           # undefined reference to GOMP_*/omp_*.
           export CGO_LDFLAGS="-fopenmp"
-          # -H windowsgui: no console window pops up for the tray app.
-          go build -tags whisper -ldflags '-s -w -H windowsgui' -o goto.exe .
+          # -H windowsgui: no console window for the tray app.
+          # -extldflags -static: link libgcc/libstdc++/libwinpthread/libgomp
+          # statically, so the .exe is self-contained and doesn't need MSYS2
+          # DLLs (libwinpthread-1.dll, libstdc++-6.dll, ...) on the user's PC.
+          go build -tags whisper -ldflags '-s -w -H windowsgui -extldflags "-static"' -o goto.exe .
           ls -la goto.exe
+          # sanity: list any remaining non-system DLL deps (best effort)
+          ldd goto.exe 2>/dev/null | grep -iE 'libwinpthread|libstdc|libgcc|libgomp' && echo "WARNING: still depends on MinGW DLLs" || echo "no MinGW DLL deps (self-contained)"
 
       - name: Attach goto.exe to the release
         if: startsWith(github.ref, 'refs/tags/')
