@@ -36,7 +36,7 @@ var iconNormal []byte
 var iconProcessing []byte
 
 // version of goto, printed at the start of the log when the app opens.
-const version = "0.3.12"
+const version = "0.3.13"
 
 // startPaused: show the tray without turning listening on (used by the login
 // autostart, so the mic does not go live by itself). Set by `--paused`.
@@ -206,7 +206,9 @@ func onReady() {
 	if err != nil {
 		log.Fatalf("winfocus: %v", err)
 	}
-	status := func(s string) { log.Println("[goto]", s); mStatus.SetTitle(s) }
+	// status updates the log, the menu's status line, and the tray tooltip
+	// (the tooltip is the most visible channel on Windows, shown on hover).
+	status := func(s string) { log.Println("[goto]", s); mStatus.SetTitle(s); systray.SetTooltip(s) }
 	eng := engine.New(cfg, be, status)
 
 	// swap the tray icon while processing (speech detected -> "listen";
