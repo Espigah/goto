@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>goto-window</id>
-    <!-- version is overridden at pack time with `choco pack --version` -->
+    <!-- version is set at pack time by the CI (choco pack /version) -->
     <version>0.0.0</version>
     <title>goto</title>
     <authors>Espigah</authors>
