@@ -107,7 +107,7 @@ func runCalibrate() int {
 func runListen() int {
 	cfg, _ := config.Load()
 	cfg.ActivationMode = config.ModeWakeWord
-	be, err := winfocus.NewX11()
+	be, err := winfocus.New()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "winfocus:", err)
 		return 1
@@ -162,7 +162,7 @@ func runCommand(query string) int {
 		fmt.Fprintln(os.Stderr, "usage: goto <app> [target]   e.g.: goto vscode myproject")
 		return 2
 	}
-	be, err := winfocus.NewX11()
+	be, err := winfocus.New()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "winfocus:", err)
 		return 1
@@ -202,7 +202,7 @@ func onReady() {
 	mQuit := systray.AddMenuItem("Quit", "quit goto")
 
 	cfg, _ := config.Load()
-	be, err := winfocus.NewX11()
+	be, err := winfocus.New()
 	if err != nil {
 		log.Fatalf("winfocus: %v", err)
 	}

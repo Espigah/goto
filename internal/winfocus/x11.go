@@ -1,3 +1,5 @@
+//go:build linux
+
 // Package winfocus finds and activates (focuses) system windows.
 //
 // This file is the Linux/X11 backend, speaking EWMH directly via xgbutil

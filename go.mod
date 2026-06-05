@@ -22,7 +22,7 @@ require (
 require (
 	github.com/ggerganov/whisper.cpp/bindings/go v0.0.0
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/sys v0.15.0
 )
 
 replace github.com/ggerganov/whisper.cpp/bindings/go => ./third_party/whisper.cpp/bindings/go

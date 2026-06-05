@@ -55,9 +55,9 @@ func Run(version string) error {
 }
 
 func handleListWindows(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	be, err := winfocus.NewX11()
+	be, err := winfocus.New()
 	if err != nil {
-		return mcp.NewToolResultErrorFromErr("connect to X", err), nil
+		return mcp.NewToolResultErrorFromErr("connect to the window backend", err), nil
 	}
 	wins, err := be.List()
 	if err != nil {
@@ -80,9 +80,9 @@ func handleRun(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult,
 	if err != nil {
 		return mcp.NewToolResultError("missing 'command' argument"), nil
 	}
-	be, err := winfocus.NewX11()
+	be, err := winfocus.New()
 	if err != nil {
-		return mcp.NewToolResultErrorFromErr("connect to X", err), nil
+		return mcp.NewToolResultErrorFromErr("connect to the window backend", err), nil
 	}
 	win, handled, err := dispatch.Resolve(cmd, be)
 	if err != nil {

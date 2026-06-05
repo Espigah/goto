@@ -1,3 +1,5 @@
+//go:build linux
+
 // Package keyinject synthesizes keyboard input via XTEST (X11) to automate
 // other apps' UIs. Used by the Chrome adapter to open the tab search
 // (Ctrl+Shift+A), type the term and press Enter.

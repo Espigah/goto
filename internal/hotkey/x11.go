@@ -1,3 +1,5 @@
+//go:build linux
+
 // Package hotkey registers a global shortcut and drives push-to-talk.
 //
 // Pure X11 implementation (XGrabKey on the root window) via xgb, so the build

@@ -1,0 +1,63 @@
+name: Windows
+
+# Experimental Windows build. Kept in its own workflow so a failure here never
+# affects the Linux release pipeline. Produces goto.exe (CGO + whisper.cpp,
+# built with the MSYS2/UCRT64 gcc so the static lib links with Go's cgo) and
+# attaches it to the release on tags.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up MSYS2 (UCRT64 toolchain)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          path-type: inherit   # so the msys2 shell also sees the Go from setup-go
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            make
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build whisper static lib (MinGW)
+        run: |
+          export CMAKE_GENERATOR=Ninja
+          export CMAKE_BUILD_PARALLEL_LEVEL="$(nproc)"
+          make lib
+
+      - name: Build goto.exe
+        run: |
+          export CGO_ENABLED=1
+          export C_INCLUDE_PATH="$PWD/third_party/whisper.cpp/include:$PWD/third_party/whisper.cpp/ggml/include"
+          export LIBRARY_PATH="$PWD/third_party/whisper.cpp/build_go/src:$PWD/third_party/whisper.cpp/build_go/ggml/src"
+          # -H windowsgui: no console window pops up for the tray app.
+          go build -tags whisper -ldflags '-s -w -H windowsgui' -o goto.exe .
+          ls -la goto.exe
+
+      - name: Attach goto.exe to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          cp goto.exe "goto_${ver}_windows_amd64.exe"
+          gh release upload "${GITHUB_REF_NAME}" "goto_${ver}_windows_amd64.exe" --clobber
