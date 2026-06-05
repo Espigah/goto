@@ -38,6 +38,16 @@ jobs:
           echo "CMAKE_GENERATOR=Ninja" >> "$GITHUB_ENV"
           echo "CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)" >> "$GITHUB_ENV"
 
+      - name: Cache the compiled whisper lib
+        # Restored after checkout, so the .o/.a are newer than the sources and
+        # `make lib` (cmake --build) is a fast incremental no-op on a hit. Keyed
+        # on the whisper source, so a real source change misses and rebuilds:
+        # no stale-output risk, no change to the produced binary.
+        uses: actions/cache@v4
+        with:
+          path: third_party/whisper.cpp/build_go
+          key: linux-whisperlib-v1-${{ hashFiles('third_party/whisper.cpp/bindings/go/Makefile', 'third_party/whisper.cpp/CMakeLists.txt', 'third_party/whisper.cpp/src/**', 'third_party/whisper.cpp/ggml/**') }}
+
       - name: GoReleaser (build + deb/rpm/tar.gz + release)
         uses: goreleaser/goreleaser-action@v6
         with:

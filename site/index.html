@@ -52,6 +52,21 @@
     animation:eq 1s ease-in-out infinite alternate}
   @keyframes eq{from{transform:scaleY(.16)}to{transform:scaleY(1)}}
   @media (prefers-reduced-motion:reduce){.wave i{animation:none;transform:scaleY(.4)}}
+  /* scroll-reveal: elements fade/slide up as they enter the viewport. The
+     hidden state is only applied when motion is allowed AND JS tagged them
+     (.reveal is added by script), so no-JS / reduced-motion users see all
+     content normally. */
+  @media (prefers-reduced-motion:no-preference){
+    .reveal{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+    .reveal.show{opacity:1;transform:none}
+    .grid .card{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+    .grid.cards-in .card{opacity:1;transform:none}
+    .grid.cards-in .card:nth-child(2){transition-delay:.07s}
+    .grid.cards-in .card:nth-child(3){transition-delay:.14s}
+    .grid.cards-in .card:nth-child(4){transition-delay:.21s}
+    .grid.cards-in .card:nth-child(5){transition-delay:.28s}
+    .grid.cards-in .card:nth-child(6){transition-delay:.35s}
+  }
 </style>
 </head>
 <body>
@@ -157,6 +172,33 @@ sudo snap connect goto-window:audio-record   # allow the microphone</code></pre>
       b.style.animationDelay = (-Math.random() * 1.2).toFixed(2) + 's';
       w.appendChild(b);
     }
+  })();
+
+  // Scroll-reveal: tag key elements and fade/slide them in as they enter view.
+  // Tagging is done here (not in the HTML) so without JS nothing is hidden.
+  (function () {
+    if (!('IntersectionObserver' in window)) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    var els = document.querySelectorAll(
+      'header > img, header > .tag, header > .badges, header > .wave, header > .cta, header > .demo,' +
+      'section > h2, section > p, section > pre, section > .demo, section > .note'
+    );
+    els.forEach(function (el) { el.classList.add('reveal'); });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('show'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+    els.forEach(function (el) { io.observe(el); });
+
+    // grids stagger their cards in (cards-in triggers the per-card delays).
+    var gio = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('cards-in'); gio.unobserve(e.target); }
+      });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.grid').forEach(function (g) { gio.observe(g); });
   })();
 </script>
 </body>
