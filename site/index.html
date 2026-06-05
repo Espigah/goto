@@ -45,6 +45,13 @@
   .verbadge{position:fixed;right:14px;bottom:12px;z-index:20;opacity:.9;transition:opacity .15s}
   .verbadge:hover{opacity:1}
   .verbadge img{height:22px;display:block;border-radius:4px}
+  /* animated sound-wave equalizer in the hero (voice = the product) */
+  .wave{display:flex;align-items:center;justify-content:center;gap:4px;height:60px;margin:30px auto 0;max-width:440px}
+  .wave i{width:5px;height:100%;border-radius:3px;transform:scaleY(.18);
+    background:linear-gradient(180deg,var(--accent),var(--accent2));
+    animation:eq 1s ease-in-out infinite alternate}
+  @keyframes eq{from{transform:scaleY(.16)}to{transform:scaleY(1)}}
+  @media (prefers-reduced-motion:reduce){.wave i{animation:none;transform:scaleY(.4)}}
 </style>
 </head>
 <body>
@@ -60,6 +67,7 @@
       <span>🗣️ hands-free</span>
       <span>🤖 works with Claude Code</span>
     </div>
+    <div class="wave" id="wave" aria-hidden="true"></div>
     <div class="cta">
       <a class="btn primary" href="https://github.com/Espigah/goto/releases/latest">⬇️ Download (.deb / .rpm / .tar.gz)</a>
       <a class="btn ghost" href="https://github.com/Espigah/goto">View on GitHub</a>
@@ -132,5 +140,20 @@ tar xzf goto_&lt;version&gt;_linux_amd64.tar.gz &amp;&amp; ./goto</code></pre>
 <a class="verbadge" href="https://github.com/Espigah/goto/releases/latest" title="latest release">
   <img src="https://img.shields.io/github/v/release/Espigah/goto?display_name=tag&label=goto&color=6e9bff&labelColor=161b22" alt="latest goto version" loading="lazy">
 </a>
+<script>
+  // Build the equalizer bars. Random duration + negative delay make each bar
+  // start mid-cycle, so it shimmers organically instead of pulsing in unison.
+  (function () {
+    var w = document.getElementById('wave');
+    if (!w) return;
+    var n = window.innerWidth < 520 ? 24 : 44;
+    for (var i = 0; i < n; i++) {
+      var b = document.createElement('i');
+      b.style.animationDuration = (0.7 + Math.random() * 0.9).toFixed(2) + 's';
+      b.style.animationDelay = (-Math.random() * 1.2).toFixed(2) + 's';
+      w.appendChild(b);
+    }
+  })();
+</script>
 </body>
 </html>
