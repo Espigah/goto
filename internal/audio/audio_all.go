@@ -1,3 +1,5 @@
+//go:build !noaudio
+
 // Package audio captures PCM from the microphone using miniaudio (malgo).
 // It is the equivalent of Handy's `cpal`: it opens the capture device and
 // delivers raw audio frames (PCM s16, mono, 16 kHz) via a callback.

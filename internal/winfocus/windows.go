@@ -29,13 +29,17 @@ var (
 	procShowWindow          = user32.NewProc("ShowWindow")
 	procSetForegroundWindow = user32.NewProc("SetForegroundWindow")
 	procBringWindowToTop    = user32.NewProc("BringWindowToTop")
+	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
+	procGetForegroundWindow      = user32.NewProc("GetForegroundWindow")
+	procAttachThreadInput        = user32.NewProc("AttachThreadInput")
 )
 
 const (
-	gwlExStyle      = uintptr(0xFFFFFFEC) // GWL_EXSTYLE (-20) as a 32-bit word
-	wsExToolWindow  = 0x00000080          // WS_EX_TOOLWINDOW
-	gwOwner         = 4                   // GW_OWNER
-	swRestore       = 9                   // SW_RESTORE
+	gwlExStyle     = uintptr(0xFFFFFFEC) // GWL_EXSTYLE (-20) as a 32-bit word
+	wsExToolWindow = 0x00000080          // WS_EX_TOOLWINDOW
+	gwOwner        = 4                   // GW_OWNER
+	swRestore      = 9                   // SW_RESTORE
+	swShow         = 5                   // SW_SHOW
 )
 
 // win32 implements winfocus.Backend on Windows.
@@ -82,15 +86,38 @@ func (win32) Activate(w Window) error {
 	if !ok {
 		return fmt.Errorf("invalid window handle for the Windows backend")
 	}
+
+	// 1. Restore if minimized
 	if r, _, _ := procIsIconic.Call(hwnd); r != 0 {
 		procShowWindow.Call(hwnd, swRestore)
+	} else {
+		procShowWindow.Call(hwnd, swShow)
 	}
+
+	// 2. Bring to top
 	procBringWindowToTop.Call(hwnd)
-	if r, _, _ := procSetForegroundWindow.Call(hwnd); r == 0 {
-		// Windows can refuse the foreground change depending on focus rules;
-		// the window was still raised by BringWindowToTop.
-		return fmt.Errorf("SetForegroundWindow refused (foreground lock)")
+
+	// 3. Try SetForegroundWindow
+	if r, _, _ := procSetForegroundWindow.Call(hwnd); r != 0 {
+		return nil
 	}
+
+	// 4. Force focus "hack": attach to the current foreground thread
+	// This is often needed when the calling process (goto) doesn't have focus.
+	fgHwnd, _, _ := procGetForegroundWindow.Call()
+	if fgHwnd == 0 || fgHwnd == hwnd {
+		return nil
+	}
+
+	fgThread, _, _ := procGetWindowThreadProcessId.Call(fgHwnd, 0)
+	myThread, _, _ := procGetWindowThreadProcessId.Call(hwnd, 0)
+
+	if fgThread != myThread {
+		procAttachThreadInput.Call(myThread, fgThread, 1)
+		procSetForegroundWindow.Call(hwnd)
+		procAttachThreadInput.Call(myThread, fgThread, 0)
+	}
+
 	return nil
 }
 

@@ -97,15 +97,41 @@ jobs:
           # sanity: list any remaining non-system DLL deps (best effort)
           ldd goto.exe 2>/dev/null | grep -iE 'libwinpthread|libstdc|libgcc|libgomp' && echo "WARNING: still depends on MinGW DLLs" || echo "no MinGW DLL deps (self-contained)"
 
-      - name: Attach goto.exe to the release
+      - name: Build Inno Setup Installer
+        shell: pwsh
+        run: |
+          $ver = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME.TrimStart('v') } else { "0.3.16" }
+          $env:GOTO_VERSION = $ver
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging/windows/installer.iss
+          
+          # Rename to include version
+          $installer = "packaging/windows/Output/goto_installer_windows.exe"
+          if (Test-Path $installer) {
+            $versioned = "goto_${ver}_installer_windows.exe"
+            Copy-Item $installer $versioned
+            Write-Host "Created: $versioned"
+            ls -la $versioned
+          }
+
+      - name: Attach goto.exe and Installer to the release
         if: startsWith(github.ref, 'refs/tags/')
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ver="${GITHUB_REF_NAME#v}"
+          
+          # Upload standalone exe
           cp goto.exe "goto_${ver}_windows_amd64.exe"
           gh release upload "${GITHUB_REF_NAME}" "goto_${ver}_windows_amd64.exe" --clobber
+          
+          # Upload the installer
+          installer="goto_${ver}_installer_windows.exe"
+          if [ -f "$installer" ]; then
+            gh release upload "${GITHUB_REF_NAME}" "$installer" --clobber
+          else
+            echo "Warning: Installer not found at $installer"
+          fi
 
       - name: Publish to Chocolatey
         if: startsWith(github.ref, 'refs/tags/')

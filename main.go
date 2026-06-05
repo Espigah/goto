@@ -41,6 +41,21 @@ func banner() { log.Printf("goto v%s", version) }
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
+		case "help", "-h", "--help":
+			fmt.Printf("goto v%s - Voice window control\n\n", version)
+			fmt.Println("Usage:")
+			fmt.Println("  goto                      Show tray icon (GUI mode)")
+			fmt.Println("  goto <app> [target]       Focus window by app name and target (CLI mode)")
+			fmt.Println("  goto listen               Start in tray and listen immediately")
+			fmt.Println("  goto calibrate            Measure mic level for 8s to tune VAD")
+			fmt.Println("  goto mcp                  Run as MCP server (for AI agents)")
+			fmt.Println("  goto version              Show version")
+			fmt.Println("\nFlags:")
+			fmt.Println("  --paused                  Start tray without turning on the mic")
+			return
+		case "version", "-v", "--version":
+			fmt.Printf("goto v%s\n", version)
+			return
 		case "calibrate":
 			os.Exit(runCalibrate())
 		case "listen":

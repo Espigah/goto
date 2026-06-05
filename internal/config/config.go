@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 // Activation modes.
@@ -43,11 +44,13 @@ func Default() Config {
 	}
 }
 
-// Dir is ~/.config/goto.
+// Dir is the configuration directory.
 func Dir() string {
 	base, err := os.UserConfigDir()
 	if err != nil {
-		base = filepath.Join(os.Getenv("HOME"), ".config")
+		// Fallback for systems without UserConfigDir
+		home, _ := os.UserHomeDir()
+		return filepath.Join(home, ".config", "goto")
 	}
 	return filepath.Join(base, "goto")
 }
@@ -55,8 +58,16 @@ func Dir() string {
 // Path is the config file.
 func Path() string { return filepath.Join(Dir(), "config.json") }
 
-// ModelsDir is ~/.local/share/goto/models.
+// ModelsDir is where Whisper models are stored.
 func ModelsDir() string {
+	if runtime.GOOS == "windows" {
+		base := os.Getenv("LOCALAPPDATA")
+		if base == "" {
+			home, _ := os.UserHomeDir()
+			base = filepath.Join(home, "AppData", "Local")
+		}
+		return filepath.Join(base, "goto", "models")
+	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".local", "share", "goto", "models")
 }

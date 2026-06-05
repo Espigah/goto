@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	b, err := winfocus.NewX11()
+	b, err := winfocus.New()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "erro:", err)
 		os.Exit(1)

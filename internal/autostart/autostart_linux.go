@@ -1,3 +1,5 @@
+//go:build !windows
+
 // Package autostart manages the XDG autostart entry that launches goto in the
 // tray on login (~/.config/autostart/goto.desktop). The tray exposes a toggle
 // so the user can turn "start at login" on or off.

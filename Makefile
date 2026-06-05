@@ -6,6 +6,10 @@
 #
 # The C lib (libwhisper) is a BUILD-only dependency. End users get a normal Go
 # binary. Build the lib once with `make lib`.
+#
+# Windows builds:
+#   Use build-windows.ps1 PowerShell script for Windows
+#   Or: go build -tags noaudio -o goto.exe . (lightweight, no voice)
 
 WHISPER_DIR := $(CURDIR)/third_party/whisper.cpp
 
@@ -13,13 +17,16 @@ export CGO_ENABLED := 1
 export C_INCLUDE_PATH := $(WHISPER_DIR)/include:$(WHISPER_DIR)/ggml/include
 export LIBRARY_PATH := $(WHISPER_DIR)/build_go/src:$(WHISPER_DIR)/build_go/ggml/src
 
-.PHONY: build build-voice lib test test-voice vet fmt install uninstall
+.PHONY: build build-voice lib test test-voice vet fmt install uninstall build-windows
 
 build: ## window-focus-only binary
 	go build -o goto .
 
 build-voice: ## full binary with offline Whisper
 	go build -tags whisper -o goto .
+
+build-windows: ## Windows binary without voice (no CGO, lightweight)
+	go build -tags noaudio -o goto.exe .
 
 lib: ## build libwhisper.a (once)
 	$(MAKE) -C third_party/whisper.cpp/bindings/go whisper
@@ -41,3 +48,4 @@ install: build-voice ## install to ~/.local + autostart on login (no root)
 
 uninstall: ## remove the user install
 	bash scripts/uninstall.sh
+
