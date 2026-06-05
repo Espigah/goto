@@ -30,7 +30,7 @@ import (
 // icons_other.go uses .png), because the Windows tray needs ICO format.
 
 // version of goto, printed at the start of the log when the app opens.
-const version = "0.3.14"
+const version = "0.3.15"
 
 // startPaused: show the tray without turning listening on (used by the login
 // autostart, so the mic does not go live by itself). Set by `--paused`.

@@ -1,0 +1,11 @@
+VERIFICATION
+
+goto is open source and this package is maintained by the software author
+(Espigah). The package downloads the official release binary directly from
+the project's GitHub releases:
+
+  https://github.com/Espigah/goto/releases
+
+The download is verified against the sha256 checksum embedded in
+chocolateyinstall.ps1, which matches the checksum published with the release
+(goto_<version>_checksums.txt) on the same releases page.

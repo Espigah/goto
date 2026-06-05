@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>goto-window</id>
+    <!-- version is overridden at pack time with `choco pack --version` -->
+    <version>0.0.0</version>
+    <title>goto</title>
+    <authors>Espigah</authors>
+    <owners>Espigah</owners>
+    <projectUrl>https://github.com/Espigah/goto</projectUrl>
+    <projectSourceUrl>https://github.com/Espigah/goto</projectSourceUrl>
+    <packageSourceUrl>https://github.com/Espigah/goto/tree/main/packaging/chocolatey</packageSourceUrl>
+    <bugTrackerUrl>https://github.com/Espigah/goto/issues</bugTrackerUrl>
+    <licenseUrl>https://github.com/Espigah/goto/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <iconUrl>https://raw.githubusercontent.com/Espigah/goto/main/packaging/icons/goto.png</iconUrl>
+    <tags>goto voice window-focus productivity tray accessibility offline</tags>
+    <summary>Focus windows, tabs and conversations by voice, offline.</summary>
+    <description>
+goto focuses windows, tabs and conversations by voice, fully offline. Say
+"goto vscode myproject" and the window jumps to the front, no mouse, no
+endless Alt+Tab. Speech recognition runs locally: no account, no cloud, no
+API key. goto lives in the system tray.
+
+On first run it downloads a one-time voice model (~466 MB); progress is shown
+on the tray icon.
+
+Note: Windows support is experimental and may have rough edges. Please report
+issues at https://github.com/Espigah/goto/issues.
+    </description>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
