@@ -65,6 +65,10 @@ jobs:
           export CGO_ENABLED=1
           export C_INCLUDE_PATH="$PWD/third_party/whisper.cpp/include:$PWD/third_party/whisper.cpp/ggml/include"
           export LIBRARY_PATH="$PWD/third_party/whisper.cpp/build_go/src:$PWD/third_party/whisper.cpp/build_go/ggml/src"
+          # ggml is compiled with OpenMP, so the final link needs the OpenMP
+          # runtime (-fopenmp pulls in libgomp); without it the link fails with
+          # undefined reference to GOMP_*/omp_*.
+          export CGO_LDFLAGS="-fopenmp"
           # -H windowsgui: no console window pops up for the tray app.
           go build -tags whisper -ldflags '-s -w -H windowsgui' -o goto.exe .
           ls -la goto.exe
