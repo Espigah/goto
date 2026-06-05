@@ -1,14 +1,16 @@
 name: Auto-tag release
 
-# Turns "push to main" into a full release: when the version in main.go is new,
-# this pushes a v<version> tag, which fans out to release.yml (deb/rpm/tar.gz +
-# AppImage), snap.yml, windows.yml and the pages repo rebuild. If the version
-# hasn't changed, it does nothing (you can't release the same version twice).
+# Gated full release. After the CI workflow finishes on main, if (and only if)
+# it PASSED and the version in main.go is new, push a v<version> tag, which
+# fans out to release.yml (deb/rpm/tar.gz + AppImage), snap.yml, windows.yml
+# and the pages repo rebuild. Same version, or CI failed -> no-op.
 #
 # The tag is pushed with a PAT (secret RELEASE_PAT) on purpose: a tag pushed
 # with the default GITHUB_TOKEN would NOT trigger the other workflows.
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
 
 permissions:
@@ -16,10 +18,14 @@ permissions:
 
 jobs:
   autotag:
+    # only proceed when the CI run that triggered us actually succeeded.
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          # head_sha is a commit SHA (safe to use as ref): the exact commit CI passed on.
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
       - name: Tag the release when the version changed
