@@ -30,8 +30,13 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Build deps (cmake/g++)
-        run: sudo apt-get update && sudo apt-get install -y cmake build-essential
+      - name: Build deps (cmake/g++/ninja)
+        run: |
+          sudo apt-get update && sudo apt-get install -y cmake ninja-build build-essential
+          # the vendored whisper Makefile calls `cmake --build` with no -j;
+          # Ninja parallelizes on its own, so the lib build uses all cores.
+          echo "CMAKE_GENERATOR=Ninja" >> "$GITHUB_ENV"
+          echo "CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)" >> "$GITHUB_ENV"
 
       - name: GoReleaser (build + deb/rpm/tar.gz + release)
         uses: goreleaser/goreleaser-action@v6
