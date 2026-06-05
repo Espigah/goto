@@ -3,6 +3,8 @@
 /build/
 *.AppImage
 /AppDir/
+*.exe         # Windows binaries are CI/release artifacts, never committed
+*~            # editor backup files (e.g. goto.exe~)
 *.syso        # generated in Windows CI from goto.rc (the exe icon resource)
 
 # compiled whisper.cpp lib
