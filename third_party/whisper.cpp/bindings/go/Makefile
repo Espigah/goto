@@ -32,7 +32,10 @@ all: clean whisper examples
 whisper: mkdir
 	cmake -S ../.. -B ../../${BUILD_DIR} \
 		-DCMAKE_BUILD_TYPE=Release \
-		-DBUILD_SHARED_LIBS=OFF
+		-DBUILD_SHARED_LIBS=OFF \
+		-DGGML_NATIVE=OFF \
+		-DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON \
+		-DGGML_AVX512=OFF
 	cmake --build ../../${BUILD_DIR} --target whisper
 
 test: model-small whisper modtidy
