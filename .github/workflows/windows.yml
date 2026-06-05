@@ -29,7 +29,7 @@ jobs:
         with:
           msystem: UCRT64
           path-type: inherit   # so the msys2 shell also sees the Go from setup-go
-          update: true
+          update: false        # skip the full pacman -Syu: faster, and a stable toolchain keeps the lib cache valid
           install: >-
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-cmake
@@ -40,7 +40,17 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Cache the compiled whisper lib
+        id: whisper-cache
+        uses: actions/cache@v4
+        with:
+          path: third_party/whisper.cpp/build_go
+          # rebuilds only when the vendored whisper source / build config changes.
+          # bump the v1 prefix if a toolchain change ever makes the cached .a stale.
+          key: win-whisperlib-v1-${{ hashFiles('third_party/whisper.cpp/bindings/go/Makefile', 'third_party/whisper.cpp/CMakeLists.txt', 'third_party/whisper.cpp/src/**', 'third_party/whisper.cpp/ggml/**') }}
+
       - name: Build whisper static lib (MinGW)
+        if: steps.whisper-cache.outputs.cache-hit != 'true'
         run: |
           export CMAKE_GENERATOR=Ninja
           export CMAKE_BUILD_PARALLEL_LEVEL="$(nproc)"
