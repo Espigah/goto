@@ -196,3 +196,7 @@ the one-time Whisper model download on first use.
 ## License
 
 MIT
+
+---
+
+**[Visit the landing page](https://espigah.github.io/goto/)**
