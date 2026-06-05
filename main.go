@@ -8,7 +8,6 @@
 package main
 
 import (
-	_ "embed"
 	"fmt"
 	"log"
 	"os"
@@ -27,16 +26,11 @@ import (
 	"goto/internal/winfocus"
 )
 
-//go:embed packaging/icons/goto.png
-var iconNormal []byte
-
-// icon shown while a command is being processed (speech detected).
-//
-//go:embed packaging/icons/goto-icon-listen.png
-var iconProcessing []byte
+// iconNormal / iconProcessing are embedded per-OS (icons_windows.go uses .ico,
+// icons_other.go uses .png), because the Windows tray needs ICO format.
 
 // version of goto, printed at the start of the log when the app opens.
-const version = "0.3.13"
+const version = "0.3.14"
 
 // startPaused: show the tray without turning listening on (used by the login
 // autostart, so the mic does not go live by itself). Set by `--paused`.

@@ -3,6 +3,7 @@
 /build/
 *.AppImage
 /AppDir/
+*.syso        # generated in Windows CI from goto.rc (the exe icon resource)
 
 # compiled whisper.cpp lib
 /third_party/whisper.cpp/build_go/

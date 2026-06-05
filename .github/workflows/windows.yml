@@ -73,6 +73,12 @@ jobs:
             done
           done
 
+      - name: Embed the app icon (windres -> .syso)
+        # windres (MinGW binutils) compiles goto.rc into a COFF resource object.
+        # Named *_windows_amd64.syso, the Go linker auto-includes it only for
+        # windows/amd64, embedding the icon into goto.exe.
+        run: windres -O coff -i goto.rc -o rsrc_windows_amd64.syso
+
       - name: Build goto.exe
         run: |
           export CGO_ENABLED=1

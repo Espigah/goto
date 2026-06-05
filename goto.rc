@@ -1,0 +1,5 @@
+// Windows resource script: embeds the app icon into goto.exe.
+// Compiled by windres in the Windows CI into rsrc_windows_amd64.syso, which
+// the Go linker picks up automatically for windows/amd64 (so Explorer, the
+// taskbar and the title bar show goto's icon instead of the default one).
+1 ICON "packaging/icons/goto.ico"
