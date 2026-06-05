@@ -27,6 +27,12 @@ jobs:
           # head_sha is a commit SHA (safe to use as ref): the exact commit CI passed on.
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
+          # Check out (and thus persist credentials) with the PAT, so the tag
+          # push below is authenticated by the PAT and DOES trigger the
+          # release/snap/windows workflows. With the default GITHUB_TOKEN, its
+          # persisted auth header overrides any URL credentials and the tag
+          # push would be suppressed (anti-recursion).
+          token: ${{ secrets.RELEASE_PAT }}
 
       - name: Tag the release when the version changed
         env:
@@ -46,5 +52,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -a "$tag" -m "Release $tag"
-          git push "https://x-access-token:${RELEASE_PAT}@github.com/${GITHUB_REPOSITORY}.git" "$tag"
+          git push origin "$tag"   # authenticated by the PAT (checkout token) -> triggers the release workflows
           echo ">> pushed $tag -> release / snap / windows / pages will run"
