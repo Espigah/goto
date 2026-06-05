@@ -10,6 +10,9 @@ on:
       - "v*"
   workflow_dispatch: {}
 
+permissions:
+  contents: write   # needed for `gh release upload` to attach goto.exe
+
 jobs:
   windows:
     runs-on: windows-latest
