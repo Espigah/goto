@@ -110,7 +110,7 @@ jobs:
             $versioned = "goto_${ver}_installer_windows.exe"
             Copy-Item $installer $versioned
             Write-Host "Created: $versioned"
-            ls -la $versioned
+            Get-Item $versioned | Format-List Name, Length
           }
 
       - name: Attach goto.exe and Installer to the release
