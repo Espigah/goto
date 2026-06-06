@@ -7,12 +7,14 @@
     <title>goto</title>
     <authors>Espigah</authors>
     <owners>Espigah</owners>
-    <projectUrl>https://github.com/Espigah/goto</projectUrl>
+    <projectUrl>https://espigah.github.io/goto/</projectUrl>
     <projectSourceUrl>https://github.com/Espigah/goto</projectSourceUrl>
     <packageSourceUrl>https://github.com/Espigah/goto/tree/main/packaging/chocolatey</packageSourceUrl>
     <bugTrackerUrl>https://github.com/Espigah/goto/issues</bugTrackerUrl>
     <licenseUrl>https://github.com/Espigah/goto/blob/main/LICENSE</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <!-- external release-notes URL (Chocolatey guideline; a URL avoids per-version edits) -->
+    <releaseNotes>https://github.com/Espigah/goto/releases</releaseNotes>
     <!-- Chocolatey's gallery doesn't render raw.githubusercontent icons; use a CDN (jsDelivr). -->
     <iconUrl>https://cdn.jsdelivr.net/gh/Espigah/goto@main/packaging/icons/goto.png</iconUrl>
     <tags>goto voice window-focus productivity tray accessibility offline</tags>

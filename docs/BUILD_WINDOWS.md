@@ -56,6 +56,15 @@ The wrapper is in `.gitignore` (`gcc_wrap.exe`) — never commit the compiled bi
 
 ## Build variants
 
+Build tags select the audio/voice backend (same on every OS, so Linux is
+unaffected, it defaults to full audio + optional whisper):
+
+| Tag | Effect |
+|-----|--------|
+| _(none)_ | `internal/audio/audio_all.go`, real mic via malgo/WASAPI (needs CGO) |
+| `-tags noaudio` | `internal/audio/audio_stub.go`, no mic, no CGO |
+| `-tags whisper` | compiles offline Whisper STT (CGO + libwhisper); without it a stub STT is used |
+
 ### 1. No-audio (no CGO, fastest)
 
 No GCC needed. Window focus and MCP only. No mic, no voice.
@@ -143,6 +152,23 @@ The CI does **not** use `gcc_wrap.go` — the MSYS2 GCC does not emit `pe-bigobj
 and the wrapper is only needed for w64devkit GCC 16 on developer machines.
 
 ---
+
+## Windows-specific runtime behavior
+
+Window classes and ASR output differ from Linux, so a few adapters/wake rules
+are Windows-aware:
+
+- **Explorer**: window class is `CabinetWClass` (not "explorer"), matched in
+  `internal/adapter/builtin.go`.
+- **Chrome vs Electron**: every Electron app (VS Code, Slack, Kiro, ...) shares
+  the `Chrome_WidgetWin_1` class, so the Chrome adapter filters by the title
+  containing "google chrome" (`internal/adapter/chrome.go`).
+- **Wake word (PT/ASR)**: Whisper-PT fuses wake+command into one token or swaps
+  G→C, so `internal/wake/wake.go` adds a split pass (prefixes 4–8 chars) and PT
+  variants (`gocho`, `gochua`, `cocho`, `coto`, `coche`, `voto`, ...).
+- **Default language**: recognition defaults to Portuguese (`internal/config`);
+  override it in `config.json` (`%APPDATA%\goto\` on Windows, `~/.config/goto/`
+  on Linux).
 
 ## Known issues / gotchas
 
