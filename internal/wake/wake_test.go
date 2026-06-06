@@ -46,12 +46,25 @@ func TestDetectAccents(t *testing.T) {
 	}
 }
 
-// makes sure it does not become too easy a trigger (dangerous false positives)
+// makes sure it does not become too easy a trigger (dangerous false positives).
+// NOTE: "voto" is intentionally NOT here, it's an accepted PT-accent variant of
+// "goto" (see GotoVariants), even though it's also a real Portuguese word.
 func TestNoFalsePositives(t *testing.T) {
 	d := Default()
-	for _, bad := range []string{"google", "photo", "moto", "voto", "gato"} {
+	for _, bad := range []string{"google", "photo", "moto", "gato"} {
 		if _, ok := d.Detect(bad + " slack"); ok {
 			t.Errorf("%q triggered wrongly", bad)
+		}
+	}
+}
+
+// accent / ASR variants that MUST keep triggering the wake word (PT and EN
+// mishearings of "goto"). Locks the requirement in so it can't silently regress.
+func TestAccentVariantsAccepted(t *testing.T) {
+	d := Default()
+	for _, w := range []string{"goto", "go to", "good to", "voto", "gotu", "gotchu", "huchu", "gocho"} {
+		if _, ok := d.Detect(w + " slack"); !ok {
+			t.Errorf("%q should be accepted as a wake variant, but was not", w)
 		}
 	}
 }
