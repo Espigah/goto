@@ -46,15 +46,15 @@ Este diretório contém os arquivos para criar o instalador Windows do goto.
 
 ## Para Usuários Finais: Como Instalar
 
-Veja o arquivo `INSTALL_GUIDE.md` neste diretório para instruções detalhadas em português.
+Baixe o `goto_<versão>_installer_windows.exe` na [página de releases](https://github.com/Espigah/goto/releases/latest)
+e execute. Ou use o script `scripts/install-windows.ps1`.
 
 ## Estrutura dos Arquivos
 
 ```
 packaging/windows/
 ├── installer.iss          # Configuração do Inno Setup
-├── README.md              # Este arquivo (para desenvolvedores)
-└── INSTALL_GUIDE.md       # Guia de instalação (para usuários finais)
+└── README.md              # Este arquivo (para desenvolvedores)
 ```
 
 ## Notas Técnicas

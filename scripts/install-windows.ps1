@@ -2,10 +2,10 @@
 # Run this once to install goto from a GitHub release.
 #
 # Usage (run in PowerShell as normal user, no admin needed):
-#   irm https://raw.githubusercontent.com/Espigah/goto/main/install-windows.ps1 | iex
+#   irm https://raw.githubusercontent.com/Espigah/goto/main/scripts/install-windows.ps1 | iex
 #
 # Or locally after cloning:
-#   .\install-windows.ps1
+#   .\scripts\install-windows.ps1
 #
 # What it does:
 #   1. Downloads the latest goto.exe from GitHub releases

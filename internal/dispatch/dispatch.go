@@ -43,10 +43,10 @@ var builtinSpoken = map[string]string{
 	"westcoad":           "vscode",
 	"vesco":              "vscode",
 	// vscode PT mishearings
-	"vis code":   "vscode",
-	"viscode":    "vscode",
-	"biscote":    "vscode",
-	"vis codi":   "vscode",
+	"vis code": "vscode",
+	"viscode":  "vscode",
+	"biscote":  "vscode",
+	"vis codi": "vscode",
 	// navegador PT -> browser
 	"navegador":   "browser",
 	"navegadores": "browser",

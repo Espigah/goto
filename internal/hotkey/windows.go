@@ -21,16 +21,16 @@ import (
 )
 
 var (
-	user32                   = windows.NewLazySystemDLL("user32.dll")
-	kernel32                 = windows.NewLazySystemDLL("kernel32.dll")
-	procSetWindowsHookExW    = user32.NewProc("SetWindowsHookExW")
-	procUnhookWindowsHookEx  = user32.NewProc("UnhookWindowsHookEx")
-	procCallNextHookEx       = user32.NewProc("CallNextHookEx")
-	procGetMessageW          = user32.NewProc("GetMessageW")
-	procPostThreadMessageW   = user32.NewProc("PostThreadMessageW")
-	procGetAsyncKeyState     = user32.NewProc("GetAsyncKeyState")
-	procGetModuleHandleW     = kernel32.NewProc("GetModuleHandleW")
-	procGetCurrentThreadId   = kernel32.NewProc("GetCurrentThreadId")
+	user32                  = windows.NewLazySystemDLL("user32.dll")
+	kernel32                = windows.NewLazySystemDLL("kernel32.dll")
+	procSetWindowsHookExW   = user32.NewProc("SetWindowsHookExW")
+	procUnhookWindowsHookEx = user32.NewProc("UnhookWindowsHookEx")
+	procCallNextHookEx      = user32.NewProc("CallNextHookEx")
+	procGetMessageW         = user32.NewProc("GetMessageW")
+	procPostThreadMessageW  = user32.NewProc("PostThreadMessageW")
+	procGetAsyncKeyState    = user32.NewProc("GetAsyncKeyState")
+	procGetModuleHandleW    = kernel32.NewProc("GetModuleHandleW")
+	procGetCurrentThreadId  = kernel32.NewProc("GetCurrentThreadId")
 )
 
 const (

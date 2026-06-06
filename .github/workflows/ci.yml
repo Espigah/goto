@@ -17,6 +17,15 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: gofmt (our code only, not vendored third_party)
+        run: |
+          unformatted="$(gofmt -l main.go cmd internal)"
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-formatted:"; echo "$unformatted"
+            echo "Run: gofmt -w main.go cmd internal"
+            exit 1
+          fi
+
       - name: vet
         run: go vet ./...
 

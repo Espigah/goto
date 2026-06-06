@@ -57,8 +57,8 @@ var GotoVariants = []string{
 	"gotchu", "gotcha", "gotchoo", // or as "gotchu"
 	// Portuguese ASR mishearings (Whisper PT):
 	"gochua", "gochu", "gochoo", "gocha", "gocho", // "Gochua/Gocho navegador"
-	"gochuwa", "goshoo", "goshu", "boachu",         // more PT variants
-	"voto", "guto", "gutu",                         // accent variants in PT
+	"gochuwa", "goshoo", "goshu", "boachu", // more PT variants
+	"voto", "guto", "gutu", // accent variants in PT
 	// PT: Whisper troca G->C ("cocho", "coto", "coche"):
 	"cocho", "coto", "coche", "cochu", "cocha", "coco",
 	"to", // "goto" becomes just "to" (WEAK: only valid at the start, see weakVariants)
