@@ -10,15 +10,35 @@ func init() {
 	Register(slack{})  // opens a DM/channel via "Jump to" (Ctrl+K)
 
 	// Browsers: specific + generic "browser" category.
-	// "goto browser" acts on the only open browser; if 2+ are open, it does nothing.
+	// "goto browser" / "goto navegador" acts on the only open browser.
 	firefox := Simple([]string{"firefox"}, []string{"firefox"})
 	Register(firefox)
-	Register(Category([]string{"browser", "browsers"}, chrome{}, firefox))
+	Register(Category([]string{
+		"browser", "browsers",
+		"navegador", "navegadores", // PT-BR
+	}, chrome{}, firefox))
 
 	// Declarative apps (match by WM_CLASS + title):
-	Register(Simple([]string{"terminal", "terminator"}, []string{"terminator", "gnome-terminal", "konsole", "xterm"}))
+	Register(Simple([]string{"terminal", "terminator", "console"}, []string{"terminator", "gnome-terminal", "konsole", "xterm", "windowsterminal", "cmd"}))
 	Register(Simple([]string{"postman"}, []string{"postman"}))
 	Register(Simple([]string{"dbeaver"}, []string{"dbeaver"}))
 	Register(Simple([]string{"whatsapp"}, []string{"whatsapp"}))
-	Register(Simple([]string{"nautilus", "files"}, []string{"nautilus"}))
+	Register(Simple([]string{"nautilus", "files", "explorador", "explorer"}, []string{"nautilus", "explorer", "cabinetWClass"}))
+
+	// PT-BR spoken aliases for common apps
+	// dispatch.builtinSpoken handles multi-word phrases; here we register
+	// single-token PT synonyms so lookup works directly.
+	Register(aliasFor(vscode{}, "editor", "codigo", "codigo-fonte"))
 }
+
+// aliasFor wraps an existing adapter with extra spoken names.
+func aliasFor(base Adapter, extra ...string) Adapter {
+	return namedAdapter{base, append(base.Names(), extra...)}
+}
+
+type namedAdapter struct {
+	Adapter
+	names []string
+}
+
+func (n namedAdapter) Names() []string { return n.names }

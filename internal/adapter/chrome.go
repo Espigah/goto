@@ -17,7 +17,14 @@ type chrome struct{}
 func (chrome) Names() []string { return []string{"chrome"} }
 
 func (chrome) Match(w winfocus.Window) bool {
-	return classContainsAny(w.Class, []string{"google-chrome", "chrome", "chromium"})
+	if !classContainsAny(w.Class, []string{"google-chrome", "chromium", "chrome_widgetwi"}) {
+		return false
+	}
+	// Exclude Electron-based apps that share the Chrome widget class but are
+	// NOT the browser (Kiro, VS Code, Slack, Discord, etc.).
+	// Real Chrome windows end with " - Google Chrome" or are just "Google Chrome".
+	t := strings.ToLower(w.Title)
+	return strings.Contains(t, "google chrome") || strings.HasSuffix(t, "- chrome")
 }
 
 func (chrome) Resolve(target []string, appWins []winfocus.Window, be winfocus.Backend) (winfocus.Window, bool, error) {

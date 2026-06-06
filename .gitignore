@@ -3,9 +3,14 @@
 /build/
 *.AppImage
 /AppDir/
-*.exe         # Windows binaries are CI/release artifacts, never committed
-*~            # editor backup files (e.g. goto.exe~)
-*.syso        # generated in Windows CI from goto.rc (the exe icon resource)
+goto.exe
+goto_*.exe
+goto_noaudio.exe
+*~
+
+# generated Windows resource (windres output)
+*.syso
+rsrc_windows_amd64.syso
 
 # compiled whisper.cpp lib
 /third_party/whisper.cpp/build_go/
@@ -15,3 +20,19 @@
 
 # goreleaser artifacts
 /dist/
+
+# Windows build helpers — compiled locally, never committed
+gcc_wrap.exe
+gcc_wrapper.bat
+test-build.ps1
+
+# wrapper/ folder with GCC binaries (local dev only)
+wrapper/
+
+# scratch / debug files left from build investigation
+scripts/test.c
+scripts/test.o
+scripts/test2.o
+nm1.txt
+nm2.txt
+wrapper.log

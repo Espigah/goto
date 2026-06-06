@@ -85,13 +85,16 @@ func cfgWakeWord(c config.Config) string {
 
 // biasPrompt builds a SHORT "initial prompt" for Whisper, biasing the
 // transcription toward the wake word. Short on purpose: a long prompt
-// degrades/slows decoding. Reduces the chance the ASR hears "good to".
+// degrades/slows decoding. Reduces the chance the ASR hears "good to" / "Gochua".
+// Bilingual (PT+EN) so it works regardless of GOTO_LANG.
 func biasPrompt(wakeWord string) string {
 	if wakeWord == "" {
 		wakeWord = "goto"
 	}
 	w := wakeWord
-	return w + " vscode. " + w + " slack. " + w + " terminal. " + w + " chrome."
+	// PT apps the user is likely to say + EN equivalents
+	return w + " vscode. " + w + " navegador. " + w + " terminal. " + w + " chrome. " +
+		w + " slack. " + w + " explorador. " + w + " editor."
 }
 
 // VoiceSupported reports whether this binary was compiled with the voice engine.

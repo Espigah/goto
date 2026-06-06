@@ -38,7 +38,7 @@ func Default() Config {
 	return Config{
 		ActivationMode: ModeHotkey,
 		ModelPath:      DefaultModelPath(),
-		Language:       "en", // fixed > auto: auto-detect fails badly on short clips
+		Language:       "pt", // português: melhor acurácia para usuários PT-BR
 		Hotkey:         "ctrl+alt+space",
 		WakeWord:       "goto",
 	}

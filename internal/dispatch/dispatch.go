@@ -30,6 +30,7 @@ var fillers = map[string]bool{
 // (factory intelligence). Spoken form (normalized) -> canonical. The user
 // only needs to touch this in exotic cases (SetUserAliases).
 var builtinSpoken = map[string]string{
+	// vscode EN mishearings
 	"vest code":          "vscode",
 	"vest cold":          "vscode",
 	"west coast":         "vscode",
@@ -41,6 +42,20 @@ var builtinSpoken = map[string]string{
 	"visual studio code": "vscode",
 	"westcoad":           "vscode",
 	"vesco":              "vscode",
+	// vscode PT mishearings
+	"vis code":   "vscode",
+	"viscode":    "vscode",
+	"biscote":    "vscode",
+	"vis codi":   "vscode",
+	// navegador PT -> browser
+	"navegador":   "browser",
+	"navegadores": "browser",
+	// "web browser" -> browser (Whisper PT às vezes emite a forma longa)
+	"web browser":  "browser",
+	"web browsers": "browser",
+	"webbrowser":   "browser",
+	// terminal PT
+	"console": "terminal",
 }
 
 // userAliases is the end-user override (config), applied on top.

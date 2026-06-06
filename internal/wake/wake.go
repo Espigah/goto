@@ -55,6 +55,12 @@ var GotoVariants = []string{
 	"goodto", "goodtoo", "goodtwo", "gotit", "tothe", "togo",
 	"huchu", "hutchu", "huchoo", "hoochoo", // ASR sometimes hears "goto" as "huchu"
 	"gotchu", "gotcha", "gotchoo", // or as "gotchu"
+	// Portuguese ASR mishearings (Whisper PT):
+	"gochua", "gochu", "gochoo", "gocha", "gocho", // "Gochua/Gocho navegador"
+	"gochuwa", "goshoo", "goshu", "boachu",         // more PT variants
+	"voto", "guto", "gutu",                         // accent variants in PT
+	// PT: Whisper troca G->C ("cocho", "coto", "coche"):
+	"cocho", "coto", "coche", "cochu", "cocha", "coco",
 	"to", // "goto" becomes just "to" (WEAK: only valid at the start, see weakVariants)
 }
 
@@ -72,6 +78,15 @@ var weakVariants = map[string]bool{"tothe": true, "togo": true, "to": true}
 // in front, e.g. "I will go to vscode"). Beyond that, it is normal speech.
 const scanLimit = 5
 
+// splitWakeLen is the length of the canonical wake word. Any token longer
+// than this that starts with a known variant (first N chars) gets split.
+// e.g. "gochukiro" -> try "goto"(4), "gochu"(5), "gocho"(5)... as wake prefix.
+const splitWakeLen = 4
+
+// wakeMaxLen is the longest any wake-word variant can be — sets the upper
+// bound when walking split positions on a merged token.
+const wakeMaxLen = 8
+
 // Detect looks for the wake word in the first tokens of the transcript. If
 // found, it returns the command (everything after it) and ok=true. The wake
 // word may come as 1 token ("goto") or 2 ("go to"), possibly preceded by ASR
@@ -84,14 +99,62 @@ func (d *Detector) Detect(transcript string) (command string, ok bool) {
 	}
 	for i := 0; i < limit; i++ {
 		strict := i > 0 // away from the start, only strong forms (no ambiguous ones)
+
+		// Try joining two consecutive tokens (e.g. "go" + "to" -> "goto")
 		if i+1 < len(toks) && d.isWake(toks[i]+toks[i+1], strict) {
 			return strings.Join(toks[i+2:], " "), true
 		}
+
+		// Try the token as-is
 		if d.isWake(toks[i], strict) {
 			return strings.Join(toks[i+1:], " "), true
 		}
+
+		// Split a merged token: Whisper fuses wake+command into one word.
+		// Try every prefix of length >= splitWakeLen up to wakeMaxLen.
+		// No "go" prefix required here — variants like "boachu" don't start
+		// with "go" but ARE in the variants map.
+		tok := textutil.Normalize(toks[i])
+		runes := []rune(tok)
+		if len(runes) > splitWakeLen {
+			maxSplit := wakeMaxLen
+			if maxSplit > len(runes)-1 {
+				maxSplit = len(runes) - 1
+			}
+			for split := splitWakeLen; split <= maxSplit; split++ {
+				wakePart := string(runes[:split])
+				rest := string(runes[split:])
+				if rest == "" {
+					continue
+				}
+				// isWakeSplit: like isWake but allows variants that don't
+				// start with the prefix (needed for "boachu", "huchu", etc.)
+				if d.isWakeSplit(wakePart, strict) {
+					rest = rest + " " + strings.Join(toks[i+1:], " ")
+					return strings.TrimSpace(rest), true
+				}
+			}
+		}
 	}
 	return "", false
+}
+
+// isWakeSplit is like isWake but used for split candidates: it also accepts
+// variants that don't start with the canonical prefix (e.g. "boachu").
+func (d *Detector) isWakeSplit(cand string, strict bool) bool {
+	c := textutil.Normalize(cand)
+	if c == "" {
+		return false
+	}
+	// explicit variant (no prefix required for split context)
+	if d.variants[c] {
+		return !(strict && weakVariants[c])
+	}
+	// still require "go" prefix for distance-based matches to avoid noise
+	if !strings.HasPrefix(c, d.prefix) {
+		return false
+	}
+	return textutil.Levenshtein(c, d.canonical) <= d.maxDist
 }
 
 // isWake decides whether a candidate is the wake word. strict=true excludes
