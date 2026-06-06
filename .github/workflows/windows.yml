@@ -149,6 +149,18 @@ jobs:
           choco pack "$choco/goto-window.nuspec" --version $ver --outputdirectory $choco
           if ([string]::IsNullOrEmpty($env:CHOCO_API_KEY)) {
             Write-Host "CHOCO_API_KEY not set; packed the .nupkg but not pushing."
-          } else {
-            choco push "$choco/goto-window.$ver.nupkg" --source https://push.chocolatey.org/ --api-key $env:CHOCO_API_KEY
+            exit 0
+          }
+          # The community repo returns 403 for NEW versions while the package's
+          # first version is still pending human moderation. That's expected and
+          # NOT a build failure, only fail on unexpected push errors.
+          $out = (choco push "$choco/goto-window.$ver.nupkg" --source https://push.chocolatey.org/ --api-key $env:CHOCO_API_KEY 2>&1 | Out-String)
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0) {
+            if ($out -match '40[39]|Forbidden|already exists|conflict') {
+              Write-Host "::warning::Chocolatey push rejected (likely the moderation gate: new versions are blocked until the first version is approved, or this version is already submitted). Not failing the build."
+              exit 0
+            }
+            Write-Error "Chocolatey push failed for an unexpected reason (see output above)."
+            exit 1
           }
