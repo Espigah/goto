@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/Espigah/goto/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Espigah/goto/ci.yml?branch=main&label=build&color=6e9bff&labelColor=161b22" alt="build status"></a>
   <a href="https://github.com/Espigah/goto/releases/latest"><img src="https://img.shields.io/github/v/release/Espigah/goto?display_name=tag&label=release&color=6e9bff&labelColor=161b22" alt="latest release"></a>
-  <a href="https://github.com/Espigah/goto/releases"><img src="https://img.shields.io/github/downloads/Espigah/goto/total?label=downloads&color=6e9bff&labelColor=161b22" alt="downloads"></a>
+  <a href="https://github.com/Espigah/goto/releases"><img src="https://img.shields.io/github/downloads/Espigah/goto/total?label=downloads&color=6e9bff&labelColor=161b22&cacheSeconds=3600" alt="downloads"></a>
 </p>
 
 Hunting for a window lost among dozens of others, with the mouse and Alt+Tab,
