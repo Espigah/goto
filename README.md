@@ -2,8 +2,6 @@
   <img src="site/logo.png" alt="goto" width="160">
 </p>
 
-<h1 align="center">goto</h1>
-
 <p align="center">
   <a href="https://github.com/Espigah/goto/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Espigah/goto/ci.yml?branch=main&label=build&color=6e9bff&labelColor=161b22" alt="build status"></a>
   <a href="https://github.com/Espigah/goto/releases/latest"><img src="https://img.shields.io/github/v/release/Espigah/goto?display_name=tag&label=release&color=6e9bff&labelColor=161b22" alt="latest release"></a>
