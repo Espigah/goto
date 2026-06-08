@@ -22,11 +22,26 @@ fi
 echo ">> binary   -> $BIN"
 install -Dm755 "$ROOT/goto" "$BIN"
 echo ">> icon     -> $ICON"
-install -Dm644 "$ROOT/packaging/icons/goto.png" "$ICON"
-# register the user hicolor theme so the icon cache can be built
-IDX="$HOME/.local/share/icons/hicolor/index.theme"
-[ -f "$IDX" ] || printf '[Icon Theme]\nName=hicolor\nComment=fallback\nDirectories=256x256/apps\n\n[256x256/apps]\nSize=256\nContext=Applications\nType=Fixed\n' > "$IDX"
-command -v xdg-icon-resource >/dev/null 2>&1 && xdg-icon-resource install --novendor --size 256 "$ROOT/packaging/icons/goto.png" goto >/dev/null 2>&1 || true
+# An app must NEVER own the shared hicolor index. A per-user index.theme lives
+# under $XDG_DATA_HOME, which outranks /usr/share/icons/hicolor in icon lookup;
+# a minimal one (Directories=256x256/apps) shadows the system theme and breaks
+# icon resolution desktop-wide. So register the icon with xdg-icon-resource, which
+# never touches the shared index, and only fall back to dropping the PNG into
+# 256x256/apps when that tool is missing. We never write an index.theme and never
+# run gtk-update-icon-cache on the user's hicolor dir.
+if command -v xdg-icon-resource >/dev/null 2>&1; then
+  xdg-icon-resource install --novendor --size 256 "$ROOT/packaging/icons/goto.png" goto >/dev/null 2>&1 || true
+else
+  install -Dm644 "$ROOT/packaging/icons/goto.png" "$ICON"
+fi
+# Conservative self-heal: installers <=0.3.23 wrote a stub index.theme (and its
+# icon-theme.cache) that caused exactly this breakage. Remove them only when the
+# index.theme matches that single-directory signature, so a legitimate user theme
+# is never touched.
+HICOLOR="$HOME/.local/share/icons/hicolor"
+if [ -f "$HICOLOR/index.theme" ] && grep -qx 'Directories=256x256/apps' "$HICOLOR/index.theme" 2>/dev/null; then
+  rm -f "$HICOLOR/index.theme" "$HICOLOR/icon-theme.cache"
+fi
 
 # app-menu desktop entry (Exec without flag = auto-listen when you open it)
 install -d "$(dirname "$APP_DESKTOP")"
@@ -62,7 +77,6 @@ EOF
 echo ">> autostart-> $AUTOSTART (starts paused)"
 
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
-command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" >/dev/null 2>&1 || true
 
 echo ""
 echo "OK. goto installed and will start on next login (in the tray, paused)."

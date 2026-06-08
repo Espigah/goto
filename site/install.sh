@@ -34,12 +34,25 @@ install -Dm755 "$tmp/goto" "$BIN"
 icon_src="$tmp/goto.png"
 [ -f "$icon_src" ] || curl -fsSL "https://raw.githubusercontent.com/$REPO/main/packaging/icons/goto.png" -o "$icon_src" 2>/dev/null || true
 if [ -f "$icon_src" ]; then
-  install -Dm644 "$icon_src" "$ICONDIR/256x256/apps/goto.png"
-  # register the user hicolor theme so the icon cache can be built
-  idx="$ICONDIR/index.theme"
-  [ -f "$idx" ] || printf '[Icon Theme]\nName=hicolor\nComment=fallback\nDirectories=256x256/apps\n\n[256x256/apps]\nSize=256\nContext=Applications\nType=Fixed\n' > "$idx"
-  command -v xdg-icon-resource >/dev/null 2>&1 && xdg-icon-resource install --novendor --size 256 "$icon_src" goto >/dev/null 2>&1 || true
-  command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -f -t "$ICONDIR" >/dev/null 2>&1 || true
+  # An app must NEVER own the shared hicolor index. A per-user index.theme lives
+  # under $XDG_DATA_HOME, which outranks /usr/share/icons/hicolor in icon lookup;
+  # a minimal one (Directories=256x256/apps) shadows the system theme and breaks
+  # icon resolution desktop-wide. So register the icon with xdg-icon-resource,
+  # which never touches the shared index, and only fall back to dropping the PNG
+  # into 256x256/apps when that tool is missing. We never write an index.theme and
+  # never run gtk-update-icon-cache on the user's hicolor dir.
+  if command -v xdg-icon-resource >/dev/null 2>&1; then
+    xdg-icon-resource install --novendor --size 256 "$icon_src" goto >/dev/null 2>&1 || true
+  else
+    install -Dm644 "$icon_src" "$ICONDIR/256x256/apps/goto.png"
+  fi
+  # Conservative self-heal: installers <=0.3.23 wrote a stub index.theme (and its
+  # icon-theme.cache) that caused exactly this breakage. Remove them only when the
+  # index.theme matches that single-directory signature, so a legitimate user theme
+  # is never touched.
+  if [ -f "$ICONDIR/index.theme" ] && grep -qx 'Directories=256x256/apps' "$ICONDIR/index.theme" 2>/dev/null; then
+    rm -f "$ICONDIR/index.theme" "$ICONDIR/icon-theme.cache"
+  fi
 fi
 
 # app-menu entry (opens and auto-listens). StartupWMClass helps the desktop
