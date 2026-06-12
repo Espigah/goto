@@ -55,6 +55,10 @@ func New(cfg config.Config, be winfocus.Backend, logf func(string)) *Engine {
 		logf = func(string) {}
 	}
 	vc := vad.DefaultConfig(audio.SampleRate)
+	// persisted "Calibrate mic" result (0 = keep the built-in default).
+	if cfg.VadThreshold > 0 {
+		vc.Threshold = cfg.VadThreshold
+	}
 	// quick override to calibrate without recompiling: GOTO_VAD_THRESHOLD=0.01
 	if v := os.Getenv("GOTO_VAD_THRESHOLD"); v != "" {
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
@@ -64,16 +68,37 @@ func New(cfg config.Config, be winfocus.Backend, logf func(string)) *Engine {
 	// user app aliases (override on top of the factory intelligence)
 	dispatch.SetUserAliases(cfg.Aliases)
 
-	// built-in variants + the ones the user adds in config (no recompile)
-	variants := append(append([]string{}, wake.GotoVariants...), cfg.WakeVariants...)
 	return &Engine{
 		cfg:          cfg,
 		be:           be,
-		wd:           wake.New(cfgWakeWord(cfg), 1, variants...),
+		wd:           buildDetector(cfg),
 		seg:          vad.New(vc),
 		vadThreshold: vc.Threshold,
 		log:          logf,
 	}
+}
+
+// VadThreshold returns the active RMS speech-detection threshold.
+func (e *Engine) VadThreshold() float64 { return e.seg.Threshold() }
+
+// SetVadThreshold applies a new RMS speech-detection threshold live (no
+// restart needed) and updates the in-memory config so callers can persist it.
+func (e *Engine) SetVadThreshold(t float64) {
+	e.seg.SetThreshold(t)
+	e.mu.Lock()
+	e.vadThreshold = t
+	e.cfg.VadThreshold = t
+	e.mu.Unlock()
+}
+
+// buildDetector assembles the wake detector: built-in variants, the
+// language-specific forms (how Whisper writes "goto" in that language), and
+// any the user adds in config — no recompile needed.
+func buildDetector(cfg config.Config) *wake.Detector {
+	variants := append([]string{}, wake.GotoVariants...)
+	variants = append(variants, wake.GotoLangVariants[cfg.Language]...)
+	variants = append(variants, cfg.WakeVariants...)
+	return wake.New(cfgWakeWord(cfg), 1, variants...)
 }
 
 func cfgWakeWord(c config.Config) string {
@@ -105,28 +130,74 @@ func (e *Engine) EnableVoice() error {
 	if !stt.Supported {
 		return fmt.Errorf("no voice support in this build; rebuild with `make build-voice`")
 	}
-	if err := model.Ensure(e.cfg.ModelPath, e.log); err != nil {
-		return err
-	}
-	lang := e.cfg.Language
-	if v := os.Getenv("GOTO_LANG"); v != "" {
-		lang = v // quick override to test: GOTO_LANG=en ./goto listen
-	}
-	if lang == "" {
-		lang = "en"
-	}
-	e.log("recognition language: " + lang)
-	tr, err := stt.New(stt.Config{
-		ModelPath:     e.cfg.ModelPath,
-		Language:      lang,
-		InitialPrompt: biasPrompt(e.cfg.WakeWord),
-	})
+	tr, err := e.loadTranscriber(e.cfg.ModelPath)
 	if err != nil {
 		return err
 	}
 	e.mu.Lock()
 	e.tr = tr
 	e.mu.Unlock()
+	return nil
+}
+
+// resolveLang picks the recognition language (env override > config > pt).
+func (e *Engine) resolveLang() string {
+	lang := e.cfg.Language
+	if v := os.Getenv("GOTO_LANG"); v != "" {
+		lang = v // quick override to test: GOTO_LANG=en ./goto listen
+	}
+	if lang == "" {
+		lang = "pt" // matches config.Default(); better for PT-BR users
+	}
+	return lang
+}
+
+// loadTranscriber ensures the model file exists (downloading if needed) and
+// builds a transcriber for it. Shared by EnableVoice and SetModel.
+func (e *Engine) loadTranscriber(modelPath string) (stt.Transcriber, error) {
+	if err := model.Ensure(modelPath, e.log); err != nil {
+		return nil, err
+	}
+	lang := e.resolveLang()
+	e.log("recognition language: " + lang)
+	return stt.New(stt.Config{
+		ModelPath:     modelPath,
+		Language:      lang,
+		InitialPrompt: biasPrompt(e.cfg.WakeWord),
+	})
+}
+
+// ModelPath returns the path of the model currently configured.
+func (e *Engine) ModelPath() string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.cfg.ModelPath
+}
+
+// SetModel switches the Whisper model at runtime: ensures the file exists
+// (downloading if needed — can take a while for the larger models, with
+// progress logged), loads it, and swaps the live transcriber, closing the old
+// one. Safe to call while listening; transcription is briefly serialized
+// during the swap. Blocks until done, so callers should run it off the UI loop.
+func (e *Engine) SetModel(modelPath string) error {
+	if !stt.Supported {
+		return fmt.Errorf("no voice support in this build")
+	}
+	tr, err := e.loadTranscriber(modelPath)
+	if err != nil {
+		return err
+	}
+	// procMu so we don't swap mid-transcription; mu for the fields.
+	e.procMu.Lock()
+	e.mu.Lock()
+	old := e.tr
+	e.tr = tr
+	e.cfg.ModelPath = modelPath
+	e.mu.Unlock()
+	e.procMu.Unlock()
+	if old != nil {
+		_ = old.Close()
+	}
 	return nil
 }
 
@@ -152,6 +223,25 @@ func (e *Engine) Mode() string {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	return e.cfg.ActivationMode
+}
+
+// Language returns the current recognition language ("pt", "en", "auto").
+func (e *Engine) Language() string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.cfg.Language
+}
+
+// SetLanguage changes the recognition language at runtime. It takes effect on
+// the next transcription (no model reload, no need to restart listening).
+func (e *Engine) SetLanguage(lang string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.cfg.Language = lang
+	e.wd = buildDetector(e.cfg) // refresh the language-specific wake variants
+	if e.tr != nil {
+		e.tr.SetLanguage(lang)
+	}
 }
 
 // Start opens the microphone and begins listening.
@@ -257,6 +347,7 @@ func (e *Engine) processUtterance(samples []int16, requireWake bool) {
 
 	e.mu.Lock()
 	tr := e.tr
+	wd := e.wd
 	e.mu.Unlock()
 	if tr == nil {
 		return
@@ -289,7 +380,7 @@ func (e *Engine) processUtterance(samples []int16, requireWake bool) {
 
 	cmd := text
 	if requireWake {
-		c, ok := e.wd.Detect(text)
+		c, ok := wd.Detect(text)
 		if !ok {
 			e.log(`wake word not recognized (expected to start with "goto")`)
 			return

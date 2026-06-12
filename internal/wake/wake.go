@@ -64,6 +64,21 @@ var GotoVariants = []string{
 	"to", // "goto" becomes just "to" (WEAK: only valid at the start, see weakVariants)
 }
 
+// GotoLangVariants are extra wake-word forms Whisper tends to WRITE for the
+// sound of "goto" in a given recognition language. The user always SAYS
+// "goto"; mapping these per language just stops us fighting how the model
+// transcribes that sound — it is never surfaced to the end user. The forms
+// below were observed in real Whisper-PT output for "goto slack":
+// "Gurchus Lake", "Go Choos Like", "Se você quiser, vá para o ...".
+var GotoLangVariants = map[string][]string{
+	"pt": {
+		// "goto" comes out as the literal PT for "go to" (2 tokens joined):
+		"vapara", "vaipara", "vaipra", "vaparao", "vaiparao",
+		// "goto" misheard with PT phonetics:
+		"gurchus", "gurchu", "gochoos", "gochus", "guchus",
+	},
+}
+
 // Default is the detector for the "goto" wake word, accent-tolerant.
 func Default() *Detector {
 	return New("goto", 1, GotoVariants...)

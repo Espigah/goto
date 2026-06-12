@@ -10,7 +10,12 @@
 // without changing the Segmenter's consumers.
 package vad
 
-import "goto/internal/audio"
+import (
+	"math"
+	"sync/atomic"
+
+	"goto/internal/audio"
+)
 
 // Config for the segmenter. Durations in milliseconds.
 type Config struct {
@@ -28,13 +33,14 @@ func DefaultConfig(sampleRate int) Config {
 		Threshold:   0.02,
 		HangMS:      600,
 		MinSpeechMS: 250,
-		MaxSpeechMS: 8000,
+		MaxSpeechMS: 3000, // commands are short ("goto <app> [target]"); cap at 3s
 	}
 }
 
 // Segmenter accumulates frames and emits complete utterances.
 type Segmenter struct {
 	cfg       Config
+	threshold atomic.Uint64 // float64 RMS threshold (bits); live-updatable via SetThreshold
 	inSpeech  bool
 	buf       []int16
 	speechN   int // samples that were SPEECH (does not count hang silence)
@@ -47,18 +53,20 @@ type Segmenter struct {
 // New creates a segmenter.
 func New(cfg Config) *Segmenter {
 	ms := func(d int) int { return cfg.SampleRate * d / 1000 }
-	return &Segmenter{
+	s := &Segmenter{
 		cfg:   cfg,
 		hangN: ms(cfg.HangMS),
 		minN:  ms(cfg.MinSpeechMS),
 		maxN:  ms(cfg.MaxSpeechMS),
 	}
+	s.threshold.Store(math.Float64bits(cfg.Threshold))
+	return s
 }
 
 // Push feeds a frame. When an utterance ends, it returns its samples and
 // done=true. Otherwise, done=false.
 func (s *Segmenter) Push(frame []int16) (utterance []int16, done bool) {
-	speech := audio.RMS(frame) >= s.cfg.Threshold
+	speech := audio.RMS(frame) >= math.Float64frombits(s.threshold.Load())
 
 	if speech {
 		s.inSpeech = true
@@ -98,6 +106,17 @@ func (s *Segmenter) flush() ([]int16, bool) {
 
 // InSpeech reports whether the segmenter is currently capturing speech.
 func (s *Segmenter) InSpeech() bool { return s.inSpeech }
+
+// Threshold returns the current RMS speech threshold.
+func (s *Segmenter) Threshold() float64 {
+	return math.Float64frombits(s.threshold.Load())
+}
+
+// SetThreshold updates the RMS speech threshold live (safe to call while the
+// segmenter is receiving frames from the audio callback goroutine).
+func (s *Segmenter) SetThreshold(t float64) {
+	s.threshold.Store(math.Float64bits(t))
+}
 
 // Reset clears the state (e.g. when turning listening on/off).
 func (s *Segmenter) Reset() {

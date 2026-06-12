@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 // Activation modes.
@@ -31,6 +32,9 @@ type Config struct {
 	// app-name mistranscription (e.g. "vest code" -> "vscode").
 	Aliases      map[string]string `json:"aliases"`
 	PicovoiceKey string            `json:"picovoice_key"` // optional (Plan B)
+	// VadThreshold is the RMS speech-detection threshold set by "Calibrate mic".
+	// 0 = use the built-in default. GOTO_VAD_THRESHOLD overrides it at runtime.
+	VadThreshold float64 `json:"vad_threshold"`
 }
 
 // Default returns the default config (offline, push-to-talk).
@@ -76,6 +80,54 @@ func ModelsDir() string {
 func DefaultModelPath() string {
 	return filepath.Join(ModelsDir(), "ggml-base.bin")
 }
+
+// Precision tiers exposed in the tray. "high" pulls the ~1.5GB medium model
+// (more accurate, slower); anything else stays on the lighter small model.
+const (
+	PrecisionNormal = "normal"
+	PrecisionHigh   = "high"
+)
+
+// ModelPathFor maps a precision tier to its model file. "high" -> medium
+// (~1.5GB, downloaded on first use), otherwise -> small.
+func ModelPathFor(tier string) string {
+	name := "ggml-small.bin"
+	if tier == PrecisionHigh {
+		name = "ggml-medium.bin"
+	}
+	return filepath.Join(ModelsDir(), name)
+}
+
+// PrecisionOf reports the tier a model path belongs to, by filename.
+func PrecisionOf(modelPath string) string {
+	if strings.Contains(filepath.Base(modelPath), "medium") {
+		return PrecisionHigh
+	}
+	return PrecisionNormal
+}
+
+// LogDir is where the tray app mirrors its log output.
+func LogDir() string {
+	if runtime.GOOS == "windows" {
+		base := os.Getenv("LOCALAPPDATA")
+		if base == "" {
+			home, _ := os.UserHomeDir()
+			base = filepath.Join(home, "AppData", "Local")
+		}
+		return filepath.Join(base, "goto")
+	}
+	base, err := os.UserCacheDir()
+	if err != nil {
+		home, _ := os.UserHomeDir()
+		return filepath.Join(home, ".cache", "goto")
+	}
+	return filepath.Join(base, "goto")
+}
+
+// LogPath is the file the tray mirrors its log to, so the "Show logs" menu
+// item has something to open even when goto was launched from the login
+// autostart (no terminal attached).
+func LogPath() string { return filepath.Join(LogDir(), "goto.log") }
 
 // Load reads the config; if it does not exist, returns the default (no error).
 func Load() (Config, error) {

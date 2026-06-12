@@ -67,10 +67,14 @@ func (w *whisperEngine) Transcribe(samples []int16) (string, error) {
 		ctx.SetInitialPrompt(w.prompt) // bias toward "goto" + known apps
 	}
 
-	// micro-optimizations for short commands: more threads, greedy decode,
-	// no temperature fallback (avoids re-decoding) and no context.
+	// Tuned for short commands. A small beam beats pure greedy on 2-word
+	// utterances. Temperature is pinned at 0 with NO fallback: the fallback
+	// re-decodes at higher temperatures when the first pass looks "bad", which
+	// on tiny clips produces random, creative hallucinations ("vá para o...")
+	// instead of the faithful (if imperfect) tokens the fuzzy wake detector can
+	// still match. No carry-over context between commands.
 	ctx.SetThreads(w.threads)
-	ctx.SetBeamSize(1)
+	ctx.SetBeamSize(2)
 	ctx.SetTemperature(0)
 	ctx.SetTemperatureFallback(-1)
 	ctx.SetMaxContext(0)
@@ -89,8 +93,8 @@ func (w *whisperEngine) Transcribe(samples []int16) (string, error) {
 		}
 	default:
 		frames := len(samples)/320 + 64
-		if frames < 512 { // generous floor: too-low audio_ctx makes the model hallucinate
-			frames = 512
+		if frames < 1024 { // generous floor: too-low audio_ctx makes the model hallucinate
+			frames = 1024
 		}
 		if frames > 1500 {
 			frames = 1500
@@ -112,6 +116,16 @@ func (w *whisperEngine) Transcribe(samples []int16) (string, error) {
 		sb.WriteString(seg.Text)
 	}
 	return strings.TrimSpace(sb.String()), nil
+}
+
+// SetLanguage swaps the recognition language for subsequent transcriptions.
+// Each Transcribe builds a fresh context and calls ctx.SetLanguage(w.lang), so
+// changing w.lang here takes effect immediately with no model reload.
+func (w *whisperEngine) SetLanguage(lang string) {
+	if lang == "" {
+		lang = "auto"
+	}
+	w.lang = lang
 }
 
 func (w *whisperEngine) Close() error { return w.model.Close() }

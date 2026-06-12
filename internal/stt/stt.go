@@ -10,6 +10,9 @@ package stt
 // Transcriber converts PCM audio (mono, s16, 16 kHz) into text, offline.
 type Transcriber interface {
 	Transcribe(samples []int16) (string, error)
+	// SetLanguage changes the recognition language at runtime ("pt", "en",
+	// "auto"). Applied on the next Transcribe; no model reload.
+	SetLanguage(lang string)
 	Close() error
 }
 

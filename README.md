@@ -48,6 +48,33 @@ microphone (malgo) -> VAD (drops silence) -> Whisper (speech->text, local)
 
 Switch modes from the tray menu.
 
+## The tray menu
+
+goto runs in the system tray — click the icon and you get everything:
+
+| Item | What it does |
+|------|--------------|
+| **goto vX.Y.Z** | the installed version (just a label) |
+| **Start / Stop listening** | turn voice capture on or off |
+| **Mode: wake word "goto"** | hands-free — always listening; say "goto ..." anytime |
+| **Mode: hotkey (push-to-talk)** | hold the hotkey (`ctrl+alt+space`), speak, release |
+| **Language** ▸ | recognition language: Português (BR) / English / Automatic. Pick the one you actually speak for the best accuracy |
+| **Precision** ▸ | **Normal** = light, fast model (default). **High** = larger, more accurate model (downloads ~1.5 GB once, then fully offline). Switch back anytime |
+| **Start at login** | launch goto in the tray on login (starts paused, mic off) |
+| **Calibrate mic** | records 8s, then **auto-tunes and saves** the voice-detection sensitivity for your mic — use it if recognition is poor. The result shows as a desktop notification and the **Mic sensitivity** line updates live |
+| **Mic sensitivity: N** | shows the active voice-detection threshold (lower = more sensitive). Updated by *Calibrate mic* |
+| **Show logs** | opens the recent-activity log (what goto heard, errors, downloads) |
+| **Quit** | exit goto |
+
+> **Recognition not great? Do these two steps, in order:**
+> 1. **Calibrate mic** — *start here.* One click auto-tunes and saves the voice
+>    detection to your microphone (no terminal needed). A poorly-matched mic level
+>    is the most common cause of bad recognition.
+> 2. **Precision → High** — downloads a bigger, more accurate model (~1.5 GB once,
+>    then fully offline).
+>
+> Also make sure **Language** matches what you actually speak.
+
 ## What you can do
 
 ```
@@ -133,6 +160,10 @@ chmod +x goto_<version>_x86_64.AppImage
 
 The Whisper model (~466MB) is downloaded on first use to
 `~/.local/share/goto/models/`. goto runs in the system tray.
+
+> **First thing to do:** open the tray menu and click **Calibrate mic** (speak
+> for 8s) — it tunes voice detection to your microphone. If recognition is still
+> off, switch **Precision → High**. See [The tray menu](#the-tray-menu).
 
 ### Start with the system (autostart)
 
