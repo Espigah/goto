@@ -269,17 +269,30 @@ func (e *Engine) Start() error {
 }
 
 // Stop closes the microphone.
+//
+// We must NOT hold e.mu while calling cap.Close(): Close -> device.Uninit()
+// blocks until the in-flight audio callback returns, and that callback
+// (onFrame) starts by taking e.mu. Holding the lock here would deadlock the
+// two against each other — leaving running=true, the mic open, and the tray
+// icon stuck on "listening". So we flip the state under the lock, release it,
+// and only then tear the device down.
 func (e *Engine) Stop() {
 	e.mu.Lock()
-	defer e.mu.Unlock()
 	if !e.running {
+		e.mu.Unlock()
 		return
 	}
-	if e.cap != nil {
-		e.cap.Close()
-		e.cap = nil
-	}
+	cap := e.cap
+	e.cap = nil
 	e.running = false
+	e.mu.Unlock()
+
+	if cap != nil {
+		cap.Close() // any in-flight onFrame can now take e.mu and finish
+	}
+	// We may have stopped mid-speech (segmenter left InSpeech), so the
+	// "processing" icon would never be cleared on its own — force it back.
+	e.setProcessing(false)
 }
 
 // Running reports whether listening is active.
