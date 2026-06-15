@@ -8,7 +8,7 @@
 #define AppName "goto"
 #define AppVersion GetEnv("GOTO_VERSION")
 #if AppVersion == ""
-  #define AppVersion "0.3.16"
+  #define AppVersion "0.4.0"
 #endif
 #define AppPublisher "Espigah"
 #define AppURL "https://github.com/Espigah/goto"

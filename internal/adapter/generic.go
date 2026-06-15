@@ -2,7 +2,6 @@ package adapter
 
 import (
 	"fmt"
-	"strings"
 
 	"goto/internal/textutil"
 	"goto/internal/winfocus"
@@ -34,10 +33,10 @@ func (generic) Resolve(target []string, wins []winfocus.Window, _ winfocus.Backe
 		title := textutil.Normalize(w.Title)
 		s := 0
 		for _, t := range target {
-			if class != "" && strings.Contains(class, t) {
+			if textutil.MatchToken(class, t) {
 				s += 2 // class identifies the app: worth more
 			}
-			if title != "" && strings.Contains(title, t) {
+			if textutil.MatchToken(title, t) {
 				s++
 			}
 		}

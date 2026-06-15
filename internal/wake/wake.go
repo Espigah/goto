@@ -169,7 +169,21 @@ func (d *Detector) isWakeSplit(cand string, strict bool) bool {
 	if !strings.HasPrefix(c, d.prefix) {
 		return false
 	}
-	return textutil.Levenshtein(c, d.canonical) <= d.maxDist
+	return textutil.Levenshtein(c, d.canonical) <= d.effectiveDist(c)
+}
+
+// effectiveDist is the edit-distance tolerance for a candidate. It is the
+// configured maxDist, raised by 1 for longer forms (>=6 runes): two-syllable
+// mishearings the ASR fuses ("gootoo", "gohtoh") sit at distance 2 from "goto"
+// yet still clearly start with "go", so allowing the extra edit generalizes to
+// accents we never enumerated — without loosening short words (the "go"-prefix
+// guard already keeps "gato"/"moto"/"google" out: "google" is distance 4).
+func (d *Detector) effectiveDist(cand string) int {
+	dist := d.maxDist
+	if len([]rune(cand)) >= 6 {
+		dist++
+	}
+	return dist
 }
 
 // isWake decides whether a candidate is the wake word. strict=true excludes
@@ -185,5 +199,5 @@ func (d *Detector) isWake(cand string, strict bool) bool {
 	if !strings.HasPrefix(c, d.prefix) {
 		return false // anti-false-positive: must start with "go"
 	}
-	return textutil.Levenshtein(c, d.canonical) <= d.maxDist
+	return textutil.Levenshtein(c, d.canonical) <= d.effectiveDist(c)
 }

@@ -36,7 +36,7 @@ import (
 // icons_other.go uses .png), because the Windows tray needs ICO format.
 
 // version of goto, printed at the start of the log when the app opens.
-const version = "0.3.29"
+const version = "0.4.0"
 
 // startPaused: show the tray without turning listening on (used by the login
 // autostart, so the mic does not go live by itself). Set by `--paused`.
@@ -215,12 +215,8 @@ func runListen() int {
 		mLogs := systray.AddMenuItem("Show logs", "open the goto log (recent activity)")
 		mQuit := systray.AddMenuItem("Quit", "quit goto")
 
-		eng.SetOnProcessing(func(processing bool) {
-			if processing {
-				systray.SetIcon(iconProcessing)
-			} else {
-				systray.SetIcon(iconNormal)
-			}
+		eng.SetOnState(func(s engine.State) {
+			systray.SetIcon(iconForState(s))
 		})
 
 		go func() {
@@ -283,6 +279,21 @@ func runCommand(query string) int {
 
 func onExit() { log.Println("goto stopped") }
 
+// iconForState maps an engine activity state to its tray icon: idle -> normal
+// (green G), capturing speech -> "listen" (red waves), running Whisper ->
+// "transcribe" (violet G). Lets the user tell at a glance whether goto is stuck
+// hearing noise (listen) or busy transcribing (transcribe).
+func iconForState(s engine.State) []byte {
+	switch s {
+	case engine.StateListening:
+		return iconListen
+	case engine.StateTranscribing:
+		return iconTranscribe
+	default:
+		return iconNormal
+	}
+}
+
 func onReady() {
 	systray.SetIcon(iconNormal)
 	systray.SetTitle("goto")
@@ -300,8 +311,13 @@ func onReady() {
 	mLangEN := mLang.AddSubMenuItemCheckbox("English", "recognize in English", false)
 	mLangAuto := mLang.AddSubMenuItemCheckbox("Automatic", "auto-detect the language", false)
 	mPrec := systray.AddMenuItem("Precision", "recognition accuracy vs speed/size")
-	mPrecNormal := mPrec.AddSubMenuItemCheckbox("Normal", "lighter model, faster", false)
-	mPrecHigh := mPrec.AddSubMenuItemCheckbox("High (downloads ~1.5GB)", "more accurate, slower; downloads the medium model on first use", false)
+	mPrecLow := mPrec.AddSubMenuItemCheckbox("Low (fast, ~57MB)", "smallest/fastest model (quantized base), lowest accuracy; good for slow machines", false)
+	mPrecNormal := mPrec.AddSubMenuItemCheckbox("Normal (~181MB)", "balanced model (quantized small), the default", false)
+	mPrecHigh := mPrec.AddSubMenuItemCheckbox("High (~514MB)", "most accurate (quantized medium); ~2x faster than full medium, downloaded on first use", false)
+	mCmdLen := systray.AddMenuItem("Command length", "how long one spoken command can be before it is cut")
+	mCmdShort := mCmdLen.AddSubMenuItemCheckbox("Short (2s)", "snappiest; cuts after 2s", false)
+	mCmdNormal := mCmdLen.AddSubMenuItemCheckbox("Normal (3s)", "the default", false)
+	mCmdLong := mCmdLen.AddSubMenuItemCheckbox("Long (5s)", "for longer commands / slow speakers", false)
 	mAutostart := systray.AddMenuItemCheckbox("Start at login", "launch goto in the tray on login", autostart.Enabled())
 	systray.AddSeparator()
 	mCalibrate := systray.AddMenuItem("Calibrate mic", "measure mic level for 8s & auto-tune voice detection")
@@ -333,15 +349,15 @@ func onReady() {
 	// and the speech-processing indicator never fight each other.
 	var iconMu sync.Mutex
 	downloading := false
-	applyIcon := func(processing bool) {
+	applyIcon := func(s engine.State) {
 		iconMu.Lock()
 		busy := downloading
 		iconMu.Unlock()
-		if processing || busy {
-			systray.SetIcon(iconProcessing)
-		} else {
-			systray.SetIcon(iconNormal)
+		if busy {
+			systray.SetIcon(iconTranscribe) // model download/switch: keep the busy icon
+			return
 		}
+		systray.SetIcon(iconForState(s))
 	}
 	setDownloading := func(on bool) {
 		iconMu.Lock()
@@ -352,12 +368,13 @@ func onReady() {
 		} else {
 			systray.SetTitle("goto")
 		}
-		applyIcon(false)
+		applyIcon(engine.StateIdle)
 	}
 
-	// swap the tray icon while processing (speech detected -> "listen";
-	// done -> normal). SetIcon runs on another goroutine, which is safe.
-	eng.SetOnProcessing(func(processing bool) { applyIcon(processing) })
+	// swap the tray icon per engine state: idle -> normal, capturing speech ->
+	// "listen", running Whisper -> "transcribe". SetIcon runs on another
+	// goroutine, which is safe.
+	eng.SetOnState(func(s engine.State) { applyIcon(s) })
 
 	reflectMode := func() {
 		if eng.Mode() == config.ModeWakeWord {
@@ -393,14 +410,18 @@ func onReady() {
 		status("recognition language: " + lang)
 	}
 
-	// the two precision items act as a radio group reflecting the model tier.
+	// the three precision items act as a radio group reflecting the model tier.
 	reflectPrecision := func() {
-		if config.PrecisionOf(eng.ModelPath()) == config.PrecisionHigh {
+		mPrecLow.Uncheck()
+		mPrecNormal.Uncheck()
+		mPrecHigh.Uncheck()
+		switch config.PrecisionOf(eng.ModelPath()) {
+		case config.PrecisionHigh:
 			mPrecHigh.Check()
-			mPrecNormal.Uncheck()
-		} else {
+		case config.PrecisionLow:
+			mPrecLow.Check()
+		default:
 			mPrecNormal.Check()
-			mPrecHigh.Uncheck()
 		}
 	}
 	reflectPrecision()
@@ -416,10 +437,13 @@ func onReady() {
 		switchingModel = true
 		precMu.Unlock()
 		path := config.ModelPathFor(tier)
-		if tier == config.PrecisionHigh {
-			status("switching to High precision (downloading ~1.5GB on first use)...")
-		} else {
-			status("switching to Normal precision...")
+		switch tier {
+		case config.PrecisionHigh:
+			status("switching to High precision (~514MB, downloaded on first use)...")
+		case config.PrecisionLow:
+			status("switching to Low precision (fast, ~57MB on first use)...")
+		default:
+			status("switching to Normal precision (~181MB)...")
 		}
 		// SetModel may download a large file; keep the UI responsive and show
 		// the busy icon (⬇) for the whole download.
@@ -441,6 +465,29 @@ func onReady() {
 			reflectPrecision()
 			status("precision: " + tier + " ready")
 		}()
+	}
+
+	// "Command length" radio group, reflecting the active VAD max segment.
+	reflectCmdLen := func() {
+		mCmdShort.Uncheck()
+		mCmdNormal.Uncheck()
+		mCmdLong.Uncheck()
+		switch {
+		case eng.MaxCommandMS() <= 2000:
+			mCmdShort.Check()
+		case eng.MaxCommandMS() >= 5000:
+			mCmdLong.Check()
+		default:
+			mCmdNormal.Check()
+		}
+	}
+	reflectCmdLen()
+	setCmdLen := func(ms int) {
+		eng.SetMaxCommandMS(ms)
+		cfg.MaxCommandMS = ms
+		_ = cfg.Save()
+		reflectCmdLen()
+		status(fmt.Sprintf("command length: %.0fs", float64(ms)/1000))
 	}
 
 	var hk *hotkey.Hotkey
@@ -545,7 +592,7 @@ func onReady() {
 		status("calibrating: speak normally for 8s...")
 		// surface the countdown on the tray itself (not just the hover tooltip),
 		// so the user knows it is recording without opening the menu.
-		systray.SetIcon(iconProcessing)
+		systray.SetIcon(iconListen)
 		for i := 1; i <= 8; i++ {
 			systray.SetTitle(fmt.Sprintf("goto 🎤%ds", 9-i))
 			time.Sleep(time.Second)
@@ -555,7 +602,7 @@ func onReady() {
 			status(fmt.Sprintf("calibrating %ds/8  peak RMS=%.4f", i, p))
 		}
 		systray.SetTitle("goto")
-		applyIcon(false)
+		applyIcon(engine.StateIdle)
 		cap.Close()
 		peakMu.Lock()
 		p := peak
@@ -630,10 +677,18 @@ func onReady() {
 				setLang("en")
 			case <-mLangAuto.ClickedCh:
 				setLang("auto")
+			case <-mPrecLow.ClickedCh:
+				setPrecision(config.PrecisionLow)
 			case <-mPrecNormal.ClickedCh:
 				setPrecision(config.PrecisionNormal)
 			case <-mPrecHigh.ClickedCh:
 				setPrecision(config.PrecisionHigh)
+			case <-mCmdShort.ClickedCh:
+				setCmdLen(2000)
+			case <-mCmdNormal.ClickedCh:
+				setCmdLen(3000)
+			case <-mCmdLong.ClickedCh:
+				setCmdLen(5000)
 			case <-mCalibrate.ClickedCh:
 				go calibrate()
 			case <-mAutostart.ClickedCh:

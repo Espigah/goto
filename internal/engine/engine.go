@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"goto/internal/audio"
@@ -26,6 +27,16 @@ import (
 	"goto/internal/winfocus"
 )
 
+// State is the engine's user-visible activity, surfaced to the tray so it can
+// show a distinct icon for each stage of the pipeline.
+type State int
+
+const (
+	StateIdle         State = iota // not capturing, not transcribing
+	StateListening                 // capturing speech (VAD detected it / PTT held)
+	StateTranscribing              // running Whisper on a captured utterance
+)
+
 // Engine orchestrates the pipeline.
 type Engine struct {
 	cfg config.Config
@@ -34,11 +45,11 @@ type Engine struct {
 	seg *vad.Segmenter
 	log func(string)
 
-	mu           sync.Mutex
-	tr           stt.Transcriber
-	cap          *audio.Capture
-	running      bool
-	onProcessing func(bool) // notifies start/end of processing (e.g. swap the icon)
+	mu      sync.Mutex
+	tr      stt.Transcriber
+	cap     *audio.Capture
+	running bool
+	onState func(State) // notifies state changes (e.g. swap the tray icon)
 
 	// push-to-talk
 	pttActive bool
@@ -46,7 +57,8 @@ type Engine struct {
 
 	vadThreshold float64
 
-	procMu sync.Mutex // serializes transcription+dispatch (whisper/xgb are not concurrent)
+	procMu       sync.Mutex  // serializes transcription+dispatch (whisper/xgb are not concurrent)
+	transcribing atomic.Bool // true while Whisper is running; gates the icon and drops backlog
 }
 
 // New creates the engine (without opening the mic or loading the model yet).
@@ -64,6 +76,10 @@ func New(cfg config.Config, be winfocus.Backend, logf func(string)) *Engine {
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
 			vc.Threshold = f
 		}
+	}
+	// persisted "Command length" (tray); 0 keeps the built-in default.
+	if cfg.MaxCommandMS > 0 {
+		vc.MaxSpeechMS = cfg.MaxCommandMS
 	}
 	// user app aliases (override on top of the factory intelligence)
 	dispatch.SetUserAliases(cfg.Aliases)
@@ -88,6 +104,18 @@ func (e *Engine) SetVadThreshold(t float64) {
 	e.mu.Lock()
 	e.vadThreshold = t
 	e.cfg.VadThreshold = t
+	e.mu.Unlock()
+}
+
+// MaxCommandMS returns the active max command length in milliseconds.
+func (e *Engine) MaxCommandMS() int { return e.seg.MaxSpeechMS() }
+
+// SetMaxCommandMS applies a new max command length live (no restart needed) and
+// updates the in-memory config so callers can persist it.
+func (e *Engine) SetMaxCommandMS(ms int) {
+	e.seg.SetMaxSpeechMS(ms)
+	e.mu.Lock()
+	e.cfg.MaxCommandMS = ms
 	e.mu.Unlock()
 }
 
@@ -201,12 +229,12 @@ func (e *Engine) SetModel(modelPath string) error {
 	return nil
 }
 
-// SetOnProcessing registers a callback called with true when a command starts
-// being processed (transcription/dispatch) and false when it ends. Useful for
-// visual feedback (swapping the tray icon).
-func (e *Engine) SetOnProcessing(f func(bool)) {
+// SetOnState registers a callback invoked whenever the engine's activity
+// changes (idle / listening / transcribing). Useful for visual feedback
+// (swapping the tray icon to a distinct icon per state).
+func (e *Engine) SetOnState(f func(State)) {
 	e.mu.Lock()
-	e.onProcessing = f
+	e.onState = f
 	e.mu.Unlock()
 }
 
@@ -291,8 +319,8 @@ func (e *Engine) Stop() {
 		cap.Close() // any in-flight onFrame can now take e.mu and finish
 	}
 	// We may have stopped mid-speech (segmenter left InSpeech), so the
-	// "processing" icon would never be cleared on its own — force it back.
-	e.setProcessing(false)
+	// busy icon would never be cleared on its own — force it back to idle.
+	e.setState(StateIdle)
 }
 
 // Running reports whether listening is active.
@@ -315,18 +343,22 @@ func (e *Engine) onFrame(samples []int16) {
 	}
 	e.mu.Unlock()
 
-	// wakeword: swap the icon as soon as speech STARTS (immediate feedback),
-	// and process when it ends.
+	// wakeword: show "listening" as soon as speech STARTS (immediate feedback),
+	// then "transcribing" while Whisper runs (owned by transcribe()). While a
+	// transcription is in flight we do NOT touch the icon here — otherwise
+	// background noise picked up by the VAD would flip it around and hide the
+	// fact that we are busy.
 	was := e.seg.InSpeech()
 	utt, done := e.seg.Push(samples)
 	now := e.seg.InSpeech()
-	if !was && now {
-		e.setProcessing(true) // started speaking -> "processing" icon
+	busy := e.transcribing.Load()
+	if !was && now && !busy {
+		e.setState(StateListening) // started speaking -> "listening" icon
 	}
 	if done {
-		go e.processUtterance(utt, true)
-	} else if was && !now {
-		e.setProcessing(false) // short speech discarded -> back to normal
+		go e.tryProcessUtterance(utt, true) // drops if already transcribing
+	} else if was && !now && !busy {
+		e.setState(StateIdle) // short speech discarded -> back to normal
 	}
 }
 
@@ -336,7 +368,7 @@ func (e *Engine) PTTStart() {
 	e.pttActive = true
 	e.pttBuf = nil
 	e.mu.Unlock()
-	e.setProcessing(true) // key pressed -> "processing" icon
+	e.setState(StateListening) // key pressed -> "listening" icon (recording)
 }
 
 func (e *Engine) PTTStop() {
@@ -348,16 +380,36 @@ func (e *Engine) PTTStop() {
 	if len(buf) > 0 {
 		go e.processUtterance(buf, false)
 	} else {
-		e.setProcessing(false) // nothing recorded -> back to normal
+		e.setState(StateIdle) // nothing recorded -> back to normal
 	}
 }
 
-// processUtterance transcribes and dispatches. requireWake=true requires the
-// wake word.
+// processUtterance transcribes and dispatches, waiting for the processing lock.
+// Used by push-to-talk, where every utterance is an explicit user command and
+// must not be dropped. requireWake=true requires the wake word.
 func (e *Engine) processUtterance(samples []int16, requireWake bool) {
 	e.procMu.Lock()
 	defer e.procMu.Unlock()
+	e.transcribe(samples, requireWake)
+}
 
+// tryProcessUtterance is the wake-word path: it processes only if no
+// transcription is already running, otherwise it DROPS the segment. This stops
+// the VAD from queuing a backlog of (mostly noise) utterances behind a slow
+// transcription — which would pin the tray on "transcribing" indefinitely and
+// delay the user's real next command.
+func (e *Engine) tryProcessUtterance(samples []int16, requireWake bool) {
+	if !e.procMu.TryLock() {
+		e.log("busy transcribing; dropped a captured segment (likely noise)")
+		return
+	}
+	defer e.procMu.Unlock()
+	e.transcribe(samples, requireWake)
+}
+
+// transcribe runs the pipeline (Whisper -> wake word -> dispatch). The caller
+// must hold procMu.
+func (e *Engine) transcribe(samples []int16, requireWake bool) {
 	e.mu.Lock()
 	tr := e.tr
 	wd := e.wd
@@ -366,15 +418,19 @@ func (e *Engine) processUtterance(samples []int16, requireWake bool) {
 		return
 	}
 
-	// visual feedback: as soon as speech is detected, swap the icon to
-	// "processing" and back to normal at the end (with a minimum visible time).
-	e.setProcessing(true)
+	// visual feedback: while Whisper runs, show the "transcribing" icon, then
+	// back to idle at the end (with a minimum visible time so it doesn't flicker
+	// for fast models). transcribing also gates onFrame so noise can't steal the
+	// icon mid-transcription.
+	e.transcribing.Store(true)
+	e.setState(StateTranscribing)
 	procStart := time.Now()
 	defer func() {
 		if d := time.Since(procStart); d < 500*time.Millisecond {
 			time.Sleep(500*time.Millisecond - d)
 		}
-		e.setProcessing(false)
+		e.transcribing.Store(false)
+		e.setState(StateIdle)
 	}()
 
 	dur := float64(len(samples)) / float64(audio.SampleRate)
@@ -408,12 +464,12 @@ func (e *Engine) processUtterance(samples []int16, requireWake bool) {
 	e.runCommand(cmd) // dispatch canonicalizes/fuzzies the app name
 }
 
-func (e *Engine) setProcessing(p bool) {
+func (e *Engine) setState(s State) {
 	e.mu.Lock()
-	f := e.onProcessing
+	f := e.onState
 	e.mu.Unlock()
 	if f != nil {
-		f(p)
+		f(s)
 	}
 }
 

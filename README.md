@@ -59,7 +59,8 @@ goto runs in the system tray — click the icon and you get everything:
 | **Mode: wake word "goto"** | hands-free — always listening; say "goto ..." anytime |
 | **Mode: hotkey (push-to-talk)** | hold the hotkey (`ctrl+alt+space`), speak, release |
 | **Language** ▸ | recognition language: Português (BR) / English / Automatic. Pick the one you actually speak for the best accuracy |
-| **Precision** ▸ | **Normal** = light, fast model (default). **High** = larger, more accurate model (downloads ~1.5 GB once, then fully offline). Switch back anytime |
+| **Precision** ▸ | **Low** = smallest, fastest model (~57 MB), lowest accuracy — for slow machines. **Normal** = balanced model (~181 MB), the default. **High** = most accurate model (~514 MB, downloads once, then fully offline). All tiers use quantized models so they stay fast on CPU. Switch anytime |
+| **Command length** ▸ | how long one spoken command can be before it is cut: **Short (2s)** / **Normal (3s)** / **Long (5s)**. Keep it short for snappy commands; raise it only if your commands get cut off |
 | **Start at login** | launch goto in the tray on login (starts paused, mic off) |
 | **Calibrate mic** | records 8s, then **auto-tunes and saves** the voice-detection sensitivity for your mic — use it if recognition is poor. The result shows as a desktop notification and the **Mic sensitivity** line updates live |
 | **Mic sensitivity: N** | shows the active voice-detection threshold (lower = more sensitive). Updated by *Calibrate mic* |
@@ -70,10 +71,25 @@ goto runs in the system tray — click the icon and you get everything:
 > 1. **Calibrate mic** — *start here.* One click auto-tunes and saves the voice
 >    detection to your microphone (no terminal needed). A poorly-matched mic level
 >    is the most common cause of bad recognition.
-> 2. **Precision → High** — downloads a bigger, more accurate model (~1.5 GB once,
+> 2. **Precision → High** — a bigger, more accurate model (~514 MB once,
 >    then fully offline).
 >
 > Also make sure **Language** matches what you actually speak.
+
+### The tray icon tells you what goto is doing
+
+The icon changes with goto's state, so you always know what is happening at a
+glance:
+
+| Icon | State | Meaning |
+|------|-------|---------|
+| <img src="packaging/icons/goto.png" width="20"> | **Idle** | listening for the wake word (or paused). goto is ready but not capturing a command |
+| <img src="packaging/icons/goto-icon-listen.png" width="20"> | **Listening** (red waves) | goto detected speech and is **capturing your command** (or the hotkey is held) |
+| <img src="packaging/icons/goto-icon-transcribe.png" width="20"> | **Processing** (gray waves) | goto is **transcribing and running the action**. It returns to *Idle* when done |
+
+If the icon **stays on Listening (red)**, goto is hearing background noise →
+run **Calibrate mic**. If it **lingers on Processing (gray)**, transcription is
+slow → switch **Precision → Normal** (or **Low**).
 
 ## What you can do
 
@@ -158,8 +174,8 @@ chmod +x goto_<version>_x86_64.AppImage
 ./goto_<version>_x86_64.AppImage
 ```
 
-The Whisper model (~466MB) is downloaded on first use to
-`~/.local/share/goto/models/`. goto runs in the system tray.
+The Whisper model (~181MB on the default Normal precision) is downloaded on
+first use to `~/.local/share/goto/models/`. goto runs in the system tray.
 
 > **First thing to do:** open the tray menu and click **Calibrate mic** (speak
 > for 8s) — it tunes voice detection to your microphone. If recognition is still

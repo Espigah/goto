@@ -123,11 +123,23 @@
       <div class="card"><h3>Start / Stop listening</h3><p>Turn voice capture on or off whenever you want.</p></div>
       <div class="card"><h3>Mode</h3><p><b>Wake word</b> "goto" (hands-free, always listening) or <b>Hotkey</b> (hold a key, speak, release).</p></div>
       <div class="card"><h3>Language</h3><p>Português (BR), English or Automatic. Pick the language you actually speak for the best accuracy.</p></div>
-      <div class="card"><h3>Precision</h3><p><b>Normal</b> is light and fast. <b>High</b> downloads a larger, more accurate model (~1.5 GB, once) and then runs fully offline.</p></div>
+      <div class="card"><h3>Precision</h3><p><b>Low</b> is the smallest, fastest model (~57 MB) for slow machines. <b>Normal</b> (~181 MB) is the balanced default. <b>High</b> (~514 MB) is the most accurate. All tiers use quantized models so they stay fast on CPU and run fully offline.</p></div>
+      <div class="card"><h3>Command length</h3><p>How long one spoken command can be before it is cut: <b>Short (2s)</b>, <b>Normal (3s)</b> or <b>Long (5s)</b>. Keep it short for snappy commands; raise it only if yours get cut off.</p></div>
       <div class="card"><h3>Calibrate mic</h3><p>Records 8s and <b>auto-tunes and saves</b> the voice sensitivity for your microphone. One click, no terminal. <b>Do this first</b> if recognition is poor.</p></div>
       <div class="card"><h3>Show logs</h3><p>Opens the recent-activity log: what goto heard, errors and model downloads.</p></div>
     </div>
-    <div class="note"><b>Recognition not great? Two steps, in order:</b><br>1. <b>Calibrate mic</b> — auto-tunes detection to your microphone (start here).<br>2. <b>Precision → High</b> — downloads a bigger, more accurate model (~1.5 GB, once, then offline).<br>Also make sure <b>Language</b> matches what you actually speak.</div>
+    <div class="note"><b>Recognition not great? Two steps, in order:</b><br>1. <b>Calibrate mic</b> — auto-tunes detection to your microphone (start here).<br>2. <b>Precision → High</b> — a bigger, more accurate model (~514 MB, once, then offline).<br>Also make sure <b>Language</b> matches what you actually speak.</div>
+  </section>
+
+  <section>
+    <h2>The tray icon shows what goto is doing</h2>
+    <p style="color:var(--muted);margin:0 0 18px">The icon changes with goto's state, so you always know what is happening at a glance.</p>
+    <div class="grid">
+      <div class="card"><h3><img src="icon-idle.png" width="22" style="vertical-align:middle;margin-right:8px">Idle</h3><p>Listening for the wake word (or paused). goto is ready but <b>not capturing</b> a command.</p></div>
+      <div class="card"><h3><img src="icon-listening.png" width="22" style="vertical-align:middle;margin-right:8px">Listening</h3><p>Red waves. goto detected speech and is <b>capturing your command</b> (or the hotkey is held).</p></div>
+      <div class="card"><h3><img src="icon-processing.png" width="22" style="vertical-align:middle;margin-right:8px">Processing</h3><p>Gray waves. goto is <b>transcribing and running the action</b>, then returns to Idle.</p></div>
+    </div>
+    <div class="note">Icon <b>stuck on Listening</b> (red)? goto is hearing background noise → <b>Calibrate mic</b>. Icon <b>lingering on Processing</b> (gray)? Transcription is slow → <b>Precision → Normal</b> or <b>Low</b>.</div>
   </section>
 
   <section>

@@ -35,6 +35,9 @@ type Config struct {
 	// VadThreshold is the RMS speech-detection threshold set by "Calibrate mic".
 	// 0 = use the built-in default. GOTO_VAD_THRESHOLD overrides it at runtime.
 	VadThreshold float64 `json:"vad_threshold"`
+	// MaxCommandMS caps how long a single spoken command can be before it is
+	// cut and transcribed (the tray "Command length"). 0 = built-in default (3s).
+	MaxCommandMS int `json:"max_command_ms"`
 }
 
 // Default returns the default config (offline, push-to-talk).
@@ -76,34 +79,51 @@ func ModelsDir() string {
 	return filepath.Join(home, ".local", "share", "goto", "models")
 }
 
-// DefaultModelPath is the ggml-base downloaded on first use.
+// DefaultModelPath is the model downloaded on first use. It matches the
+// "Normal" precision tier (small) so a fresh install and the tray agree on the
+// same model — the base model was less accurate and only the explicit "Low"
+// tier opts into it now.
 func DefaultModelPath() string {
-	return filepath.Join(ModelsDir(), "ggml-base.bin")
+	return ModelPathFor(PrecisionNormal)
 }
 
-// Precision tiers exposed in the tray. "high" pulls the ~1.5GB medium model
-// (more accurate, slower); anything else stays on the lighter small model.
+// Precision tiers exposed in the tray, smallest to largest. We use QUANTIZED
+// (q5) models: on CPU they are bound by memory bandwidth, so a q5 model is
+// ~1.5–2x faster than the full-precision one with virtually the same accuracy —
+// the single biggest win for how long the tray sits on "processing".
+//   - "low"    -> base   q5 (~57MB):  fastest/lightest, lowest accuracy
+//   - "normal" -> small  q5 (~181MB): the default, good accuracy
+//   - "high"   -> medium q5 (~514MB): most accurate (≈ full medium, ~2x faster)
 const (
+	PrecisionLow    = "low"
 	PrecisionNormal = "normal"
 	PrecisionHigh   = "high"
 )
 
-// ModelPathFor maps a precision tier to its model file. "high" -> medium
-// (~1.5GB, downloaded on first use), otherwise -> small.
+// ModelPathFor maps a precision tier to its model file (downloaded on first
+// use). Unknown tiers fall back to the Normal model.
 func ModelPathFor(tier string) string {
-	name := "ggml-small.bin"
-	if tier == PrecisionHigh {
-		name = "ggml-medium.bin"
+	name := "ggml-small-q5_1.bin"
+	switch tier {
+	case PrecisionLow:
+		name = "ggml-base-q5_1.bin"
+	case PrecisionHigh:
+		name = "ggml-medium-q5_0.bin"
 	}
 	return filepath.Join(ModelsDir(), name)
 }
 
 // PrecisionOf reports the tier a model path belongs to, by filename.
 func PrecisionOf(modelPath string) string {
-	if strings.Contains(filepath.Base(modelPath), "medium") {
+	base := filepath.Base(modelPath)
+	switch {
+	case strings.Contains(base, "medium"):
 		return PrecisionHigh
+	case strings.Contains(base, "base"), strings.Contains(base, "tiny"):
+		return PrecisionLow
+	default:
+		return PrecisionNormal
 	}
-	return PrecisionNormal
 }
 
 // LogDir is where the tray app mirrors its log output.

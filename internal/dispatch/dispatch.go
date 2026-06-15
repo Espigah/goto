@@ -10,6 +10,7 @@ import (
 	"errors"
 	"sort"
 	"strings"
+	"sync/atomic"
 
 	"goto/internal/adapter"
 	"goto/internal/textutil"
@@ -58,11 +59,42 @@ var builtinSpoken = map[string]string{
 	"console": "terminal",
 }
 
-// userAliases is the end-user override (config), applied on top.
-var userAliases map[string]string
+// aliasTable is the precomputed phrase-rewrite table: the built-in fixes
+// merged with the user's, all normalized once, with keys pre-sorted longest
+// first (so multi-word phrases win over their fragments). Rebuilt only when the
+// user aliases change — never on the hot path.
+type aliasTable struct {
+	m    map[string]string // normalized phrase -> normalized canonical
+	keys []string          // keys sorted by length desc
+}
 
-// SetUserAliases installs the config aliases (called once at startup).
-func SetUserAliases(m map[string]string) { userAliases = m }
+// aliases holds the active table. atomic.Pointer makes the swap in
+// SetUserAliases safe vs. concurrent reads in canonicalize (commands are
+// dispatched on a separate goroutine).
+var aliases atomic.Pointer[aliasTable]
+
+func init() { aliases.Store(buildAliasTable(nil)) }
+
+// buildAliasTable normalizes and merges the built-in + user aliases once.
+func buildAliasTable(user map[string]string) *aliasTable {
+	m := make(map[string]string, len(builtinSpoken)+len(user))
+	for k, v := range builtinSpoken {
+		m[textutil.Normalize(k)] = textutil.Normalize(v)
+	}
+	for k, v := range user { // user takes precedence
+		m[textutil.Normalize(k)] = textutil.Normalize(v)
+	}
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool { return len(keys[i]) > len(keys[j]) })
+	return &aliasTable{m: m, keys: keys}
+}
+
+// SetUserAliases installs the config aliases (called once at startup, but safe
+// to call again at runtime).
+func SetUserAliases(m map[string]string) { aliases.Store(buildAliasTable(m)) }
 
 // stripFiller drops connector words from the FRONT of the token list.
 func stripFiller(toks []string) []string {
@@ -73,24 +105,13 @@ func stripFiller(toks []string) []string {
 }
 
 // canonicalize applies the phrase fixes (built-in + user) over the already
-// normalized command. Longer phrases first (whole words).
+// normalized command, using the precomputed table. Longer phrases first
+// (whole words).
 func canonicalize(norm string) string {
-	merged := make(map[string]string, len(builtinSpoken)+len(userAliases))
-	for k, v := range builtinSpoken {
-		merged[textutil.Normalize(k)] = textutil.Normalize(v)
-	}
-	for k, v := range userAliases { // user takes precedence
-		merged[textutil.Normalize(k)] = textutil.Normalize(v)
-	}
-	keys := make([]string, 0, len(merged))
-	for k := range merged {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool { return len(keys[i]) > len(keys[j]) })
-
+	t := aliases.Load()
 	padded := " " + norm + " "
-	for _, k := range keys {
-		padded = strings.ReplaceAll(padded, " "+k+" ", " "+merged[k]+" ")
+	for _, k := range t.keys {
+		padded = strings.ReplaceAll(padded, " "+k+" ", " "+t.m[k]+" ")
 	}
 	return strings.TrimSpace(padded)
 }

@@ -33,7 +33,10 @@ func DefaultConfig(sampleRate int) Config {
 		Threshold:   0.02,
 		HangMS:      600,
 		MinSpeechMS: 250,
-		MaxSpeechMS: 3000, // commands are short ("goto <app> [target]"); cap at 3s
+		// commands are short ("goto <app> [target]"); 3s keeps them snappy even
+		// for slow speakers. Adjustable at runtime via the tray ("Command
+		// length") for the rare longer command — see SetMaxSpeechMS.
+		MaxSpeechMS: 3000,
 	}
 }
 
@@ -47,7 +50,7 @@ type Segmenter struct {
 	silentRun int // consecutive samples below the threshold
 	hangN     int // samples of silence to close
 	minN      int
-	maxN      int
+	maxN      atomic.Int64 // max samples per segment; live-updatable via SetMaxSpeechMS
 }
 
 // New creates a segmenter.
@@ -57,8 +60,8 @@ func New(cfg Config) *Segmenter {
 		cfg:   cfg,
 		hangN: ms(cfg.HangMS),
 		minN:  ms(cfg.MinSpeechMS),
-		maxN:  ms(cfg.MaxSpeechMS),
 	}
+	s.maxN.Store(int64(ms(cfg.MaxSpeechMS)))
 	s.threshold.Store(math.Float64bits(cfg.Threshold))
 	return s
 }
@@ -84,7 +87,7 @@ func (s *Segmenter) Push(frame []int16) (utterance []int16, done bool) {
 	}
 
 	// cut segments that are too long (person didn't stop speaking)
-	if s.inSpeech && len(s.buf) >= s.maxN {
+	if s.inSpeech && int64(len(s.buf)) >= s.maxN.Load() {
 		return s.flush()
 	}
 	return nil, false
@@ -116,6 +119,20 @@ func (s *Segmenter) Threshold() float64 {
 // segmenter is receiving frames from the audio callback goroutine).
 func (s *Segmenter) SetThreshold(t float64) {
 	s.threshold.Store(math.Float64bits(t))
+}
+
+// MaxSpeechMS returns the current max segment length in milliseconds.
+func (s *Segmenter) MaxSpeechMS() int {
+	return int(s.maxN.Load() * 1000 / int64(s.cfg.SampleRate))
+}
+
+// SetMaxSpeechMS updates the max segment length live (safe from the audio
+// callback goroutine). Used by the tray "Command length" control.
+func (s *Segmenter) SetMaxSpeechMS(ms int) {
+	if ms <= 0 {
+		return
+	}
+	s.maxN.Store(int64(s.cfg.SampleRate * ms / 1000))
 }
 
 // Reset clears the state (e.g. when turning listening on/off).

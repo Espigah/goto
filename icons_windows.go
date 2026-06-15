@@ -11,4 +11,7 @@ import _ "embed"
 var iconNormal []byte
 
 //go:embed packaging/icons/goto-icon-listen.ico
-var iconProcessing []byte
+var iconListen []byte
+
+//go:embed packaging/icons/goto-icon-transcribe.ico
+var iconTranscribe []byte

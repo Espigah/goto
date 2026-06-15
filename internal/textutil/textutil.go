@@ -72,7 +72,42 @@ func Tokens(s string) []string {
 	return strings.Fields(Normalize(s))
 }
 
-// ScoreTitle counts how many target tokens appear (as substrings) in the title.
+// MatchToken reports whether a spoken target token matches some text (a window
+// title or class), tolerating ASR/accent near-misses. This is what makes the
+// TARGET — the user's own words (a project, a person, a browser tab) — robust
+// to the same mistranscription the app name already tolerates.
+//
+// Order matters for speed and precision:
+//  1. exact substring (fast; also catches partials like "git" in "github");
+//  2. otherwise, a per-word edit-distance fallback ("guithub" ~ "github",
+//     "jon" ~ "john"). Only tokens of 4+ chars are fuzzed, so short, ambiguous
+//     words don't match the wrong window.
+//
+// text must already be Normalized.
+func MatchToken(text, token string) bool {
+	if token == "" || text == "" {
+		return false
+	}
+	if strings.Contains(text, token) {
+		return true
+	}
+	if len([]rune(token)) < 4 {
+		return false // too short to fuzz safely
+	}
+	// length-scaled tolerance, same policy as dispatch's app fuzzy-lookup.
+	thresh := 1
+	if len([]rune(token)) >= 7 {
+		thresh = 2
+	}
+	for _, w := range strings.Fields(text) {
+		if len([]rune(w)) >= 4 && Levenshtein(w, token) <= thresh {
+			return true
+		}
+	}
+	return false
+}
+
+// ScoreTitle counts how many target tokens match the title (substring or fuzzy).
 func ScoreTitle(title string, target []string) int {
 	t := Normalize(title)
 	if t == "" {
@@ -80,7 +115,7 @@ func ScoreTitle(title string, target []string) int {
 	}
 	n := 0
 	for _, tok := range target {
-		if strings.Contains(t, tok) {
+		if MatchToken(t, tok) {
 			n++
 		}
 	}

@@ -9,10 +9,38 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // baseURL is the official whisper.cpp ggml model repository.
 const baseURL = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/"
+
+// approxSize returns a human-friendly download size for the known model files,
+// so the one-time download message is accurate per tier (base/small/medium).
+func approxSize(name string) string {
+	quant := strings.Contains(name, "-q5") || strings.Contains(name, "-q8")
+	switch {
+	case strings.Contains(name, "medium"):
+		if quant {
+			return "~514 MB"
+		}
+		return "~1.5 GB"
+	case strings.Contains(name, "small"):
+		if quant {
+			return "~181 MB"
+		}
+		return "~466 MB"
+	case strings.Contains(name, "base"):
+		if quant {
+			return "~57 MB"
+		}
+		return "~147 MB"
+	case strings.Contains(name, "tiny"):
+		return "~75 MB"
+	default:
+		return "a few hundred MB"
+	}
+}
 
 // Exists reports whether the model is already on disk.
 func Exists(path string) bool {
@@ -34,7 +62,7 @@ func Ensure(path string, logf func(string)) error {
 	}
 	name := filepath.Base(path)
 	url := baseURL + name
-	logf("preparing voice model (~466 MB), one-time download...")
+	logf(fmt.Sprintf("preparing voice model (%s), one-time download...", approxSize(name)))
 
 	resp, err := http.Get(url)
 	if err != nil {

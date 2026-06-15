@@ -62,9 +62,21 @@ func TestNoFalsePositives(t *testing.T) {
 // mishearings of "goto"). Locks the requirement in so it can't silently regress.
 func TestAccentVariantsAccepted(t *testing.T) {
 	d := Default()
-	for _, w := range []string{"goto", "go to", "good to", "voto", "gotu", "gotchu", "huchu", "gocho"} {
+	for _, w := range []string{"goto", "go to", "good to", "voto", "gotu", "gotchu", "huchu", "gocho",
+		"gootoo", // length-aware: 6-rune "go…" form at distance 2 generalizes
+	} {
 		if _, ok := d.Detect(w + " slack"); !ok {
 			t.Errorf("%q should be accepted as a wake variant, but was not", w)
+		}
+	}
+}
+
+// the length-aware tolerance must NOT turn ordinary "go…" words into triggers.
+func TestLongLookalikesRejected(t *testing.T) {
+	d := Default()
+	for _, bad := range []string{"google", "golden", "gospel", "gopher"} {
+		if _, ok := d.Detect(bad + " slack"); ok {
+			t.Errorf("%q triggered wrongly", bad)
 		}
 	}
 }
